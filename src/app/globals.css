@@ -1184,3 +1184,129 @@ lord-icon {
   flex-direction: column;
   min-height: 100vh;
 }
+
+/* =============================================================
+   زر "في الموعد / متأخر" (Late Toggle Button)
+   ============================================================= */
+.late-toggle-btn {
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-gray);
+  background-color: #f8fafc;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.late-toggle-btn:hover:not(:disabled) {
+  background-color: #e2e8f0;
+  color: var(--text-dark);
+}
+
+.late-toggle-btn.active-ontime {
+  background-color: #DEF7EC;
+  color: #03543F;
+  border-color: #07A869;
+  font-weight: 700;
+}
+
+.late-toggle-btn.active-late {
+  background-color: #FEE2E2;
+  color: #9B1C1C;
+  border-color: #EF4444;
+  font-weight: 700;
+}
+
+.late-toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* زر مراجعة الموبايل المضغوط */
+.btn-verify-mobile {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--border-gray);
+  background-color: #f8fafc;
+  color: var(--text-light);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-verify-mobile:hover:not(:disabled) {
+  background-color: #e2e8f0;
+}
+
+.btn-verify-mobile.verified {
+  background-color: var(--secondary-green);
+  border-color: var(--secondary-green);
+  color: white;
+}
+
+.btn-verify-mobile:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* بطاقة المعلم عند اكتمال المراجعة */
+.card-verified {
+  border-right-color: var(--secondary-green) !important;
+  background-color: #f0fdf4 !important;
+}
+
+/* =============================================================
+   إصلاحات شاملة للتنقل على الهاتف (Mobile Nav Fix)
+   ============================================================= */
+@media (max-width: 768px) {
+  /* شريط التنقل: عمودان 2×2 */
+  .navbar-links {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .nav-btn {
+    width: 100% !important;
+    text-align: center !important;
+    font-size: 13px !important;
+    padding: 10px 5px !important;
+    border: 1px solid var(--border-gray) !important;
+    border-radius: var(--radius-sm) !important;
+    background-color: #f8fafc !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .nav-btn.active {
+    background-color: rgba(21, 68, 90, 0.1) !important;
+    color: var(--primary-navy) !important;
+    border-color: var(--primary-navy) !important;
+  }
+
+  .logout-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 15px !important;
+    padding: 12px !important;
+  }
+
+  /* تكديس شريط التنقل عمودياً على الجوال */
+  .employee-navbar, .manager-navbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 12px 10px !important;
+  }
+}
+

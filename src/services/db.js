@@ -6,7 +6,7 @@ const INITIAL_TEACHERS = [];
 const INITIAL_SETTINGS = {
   school_name: 'مدرسة أبي دجانه المتوسطه',
   manager_name: 'الأستاذ صابر',
-  start_time: '07:00',
+  start_time: '06:50',
   shift_duration: 7,
   header_metadata: {
     city: 'مكة المكرمة',

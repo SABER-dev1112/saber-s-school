@@ -125,8 +125,9 @@ export default function EmployeeAttendancePage() {
           } else {
             attendanceMap[teacher.id] = {
               status: 'present',
-              check_in_time: '07:00',
+              check_in_time: '',   // فارغ = حضر في الموعد (قبل أو عند 6:50)
               delay_minutes: 0,
+              isLate: false,       // افتراضياً: حضر في الموعد
               locked: false
             };
             verifiedMap[teacher.id] = false;
@@ -143,42 +144,43 @@ export default function EmployeeAttendancePage() {
     loadAttendanceForDate();
   }, [date, teachers, leaves, authorized]);
 
-  // تحديث حالة الحضور لمعلم
+  // تبديل حالة التأخير (في الموعد / متأخر) لمعلم
+  const handleLateToggle = (teacherId, isLate) => {
+    setAttendance(prev => {
+      const updated = { ...prev };
+      updated[teacherId] = {
+        ...updated[teacherId],
+        isLate,
+        // عند التأخير: ضع الوقت الافتراضي؛ عند الحضور في الموعد: امسح الوقت والتأخير
+        check_in_time: isLate ? (updated[teacherId].check_in_time || settings?.start_time || '06:50') : '',
+        delay_minutes: isLate ? calculateLateness(updated[teacherId].check_in_time || settings?.start_time || '06:50', settings?.start_time || '06:50') : 0
+      };
+      return updated;
+    });
+    setVerified(prev => ({ ...prev, [teacherId]: true }));
+  };
+
+  // تحديث حالة الحضور لمعلم (حاضر / غائب / إجازة)
   const handleStatusChange = (teacherId, status) => {
     setAttendance(prev => {
       const updated = { ...prev };
       updated[teacherId] = {
         ...updated[teacherId],
         status,
-        check_in_time: status === 'present' ? (updated[teacherId].check_in_time || '07:00') : '',
-        delay_minutes: 0
+        check_in_time: '',
+        delay_minutes: 0,
+        isLate: false
       };
-      
-      if (status === 'present' && settings) {
-        const delay = calculateLateness(updated[teacherId].check_in_time, settings.start_time);
-        updated[teacherId].delay_minutes = delay;
-      }
-
       return updated;
     });
-
-    // تأكيد تلقائي عند التعديل
-    setVerified(prev => ({
-      ...prev,
-      [teacherId]: true
-    }));
+    setVerified(prev => ({ ...prev, [teacherId]: true }));
   };
 
-  // تحديث وقت الحضور لمعلم
+  // تحديث وقت الحضور الفعلي عند التأخير
   const handleTimeChange = (teacherId, checkInTime) => {
     setAttendance(prev => {
       const updated = { ...prev };
-      let delay = 0;
-      
-      if (settings) {
-        delay = calculateLateness(checkInTime, settings.start_time);
-      }
-
+      const delay = settings ? calculateLateness(checkInTime, settings.start_time) : 0;
       updated[teacherId] = {
         ...updated[teacherId],
         check_in_time: checkInTime,
@@ -186,12 +188,7 @@ export default function EmployeeAttendancePage() {
       };
       return updated;
     });
-
-    // تأكيد تلقائي عند التعديل
-    setVerified(prev => ({
-      ...prev,
-      [teacherId]: true
-    }));
+    setVerified(prev => ({ ...prev, [teacherId]: true }));
   };
 
   // تأكيد فردي لمعلم
@@ -406,7 +403,7 @@ export default function EmployeeAttendancePage() {
                       </tr>
                     ) : (
                       filteredTeachers.map(teacher => {
-                        const record = attendance[teacher.id] || { status: 'present', check_in_time: '07:00', delay_minutes: 0, locked: false };
+                        const record = attendance[teacher.id] || { status: 'present', check_in_time: '', delay_minutes: 0, isLate: false, locked: false };
                         const isTeacherVerified = !!verified[teacher.id];
 
                         return (
@@ -431,13 +428,35 @@ export default function EmployeeAttendancePage() {
                             </td>
                             <td>
                               {record.status === 'present' && !record.locked ? (
-                                <input
-                                  type="time"
-                                  value={record.check_in_time}
-                                  onChange={(e) => handleTimeChange(teacher.id, e.target.value)}
-                                  disabled={isSubmitted}
-                                  className="table-time-input"
-                                />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                      type="button"
+                                      disabled={isSubmitted}
+                                      onClick={() => handleLateToggle(teacher.id, false)}
+                                      className={`late-toggle-btn ${!record.isLate ? 'active-ontime' : ''}`}
+                                    >
+                                      ✓ في الموعد
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={isSubmitted}
+                                      onClick={() => handleLateToggle(teacher.id, true)}
+                                      className={`late-toggle-btn ${record.isLate ? 'active-late' : ''}`}
+                                    >
+                                      ⌛ متأخر
+                                    </button>
+                                  </div>
+                                  {record.isLate && (
+                                    <input
+                                      type="time"
+                                      value={record.check_in_time}
+                                      onChange={(e) => handleTimeChange(teacher.id, e.target.value)}
+                                      disabled={isSubmitted}
+                                      className="table-time-input"
+                                    />
+                                  )}
+                                </div>
                               ) : (
                                 <span style={{ color: '#aaa' }}>-</span>
                               )}
@@ -479,34 +498,32 @@ export default function EmployeeAttendancePage() {
                   </div>
                 ) : (
                   filteredTeachers.map(teacher => {
-                    const record = attendance[teacher.id] || { status: 'present', check_in_time: '07:00', delay_minutes: 0, locked: false };
+                    const record = attendance[teacher.id] || { status: 'present', check_in_time: '', delay_minutes: 0, isLate: false, locked: false };
                     const isTeacherVerified = !!verified[teacher.id];
 
                     return (
-                      <div key={teacher.id} className="teacher-mobile-card">
+                      <div key={teacher.id} className={`teacher-mobile-card ${isTeacherVerified ? 'card-verified' : ''}`}>
                         <div className="card-header-mobile">
                           <div>
                             <div className="teacher-name-mobile">{teacher.name}</div>
                             <div className="teacher-specialty-mobile">{teacher.extra_info?.specialty || '-'}</div>
                           </div>
-                          <div>
-                            <button
-                              type="button"
-                              disabled={isSubmitted || record.locked}
-                              onClick={() => handleToggleVerify(teacher.id)}
-                              className={`btn-verify-row ${isTeacherVerified ? 'verified' : ''}`}
-                              style={{ padding: '5px 10px', fontSize: '12px' }}
-                            >
-                              {isTeacherVerified ? '✓ تم' : '🔔 مراجعة'}
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            disabled={isSubmitted || record.locked}
+                            onClick={() => handleToggleVerify(teacher.id)}
+                            className={`btn-verify-mobile ${isTeacherVerified ? 'verified' : ''}`}
+                          >
+                            {isTeacherVerified ? '✓ تم' : '🔔'}
+                          </button>
                         </div>
 
                         <div className="card-body-mobile">
+                          {/* الحالة اليومية */}
                           <div className="card-field-mobile">
-                            <span className="field-label-mobile">الحالة اليومية:</span>
+                            <span className="field-label-mobile">الحالة:</span>
                             {record.locked ? (
-                              <span className="badge-excused" style={{ fontSize: '13px' }}>[إجازة معتمدة مسبقاً]</span>
+                              <span className="badge-excused" style={{ fontSize: '12px' }}>[إجازة معتمدة]</span>
                             ) : (
                               <select
                                 value={record.status}
@@ -516,12 +533,40 @@ export default function EmployeeAttendancePage() {
                               >
                                 <option value="present">حاضر</option>
                                 <option value="absent">غياب بدون إذن</option>
-                                <option value="emergency_pending">إجازة طارئة (انتظار)</option>
+                                <option value="emergency_pending">إجازة طارئة</option>
                               </select>
                             )}
                           </div>
 
+                          {/* زر في الموعد / متأخر */}
                           {record.status === 'present' && !record.locked && (
+                            <div className="card-field-mobile">
+                              <span className="field-label-mobile">التوقيت:</span>
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  type="button"
+                                  disabled={isSubmitted}
+                                  onClick={() => handleLateToggle(teacher.id, false)}
+                                  className={`late-toggle-btn ${!record.isLate ? 'active-ontime' : ''}`}
+                                  style={{ fontSize: '12px', padding: '4px 8px' }}
+                                >
+                                  ✓ في الموعد
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isSubmitted}
+                                  onClick={() => handleLateToggle(teacher.id, true)}
+                                  className={`late-toggle-btn ${record.isLate ? 'active-late' : ''}`}
+                                  style={{ fontSize: '12px', padding: '4px 8px' }}
+                                >
+                                  ⌛ متأخر
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* حقل الوقت عند التأخير */}
+                          {record.status === 'present' && !record.locked && record.isLate && (
                             <div className="card-field-mobile">
                               <span className="field-label-mobile">وقت الحضور:</span>
                               <input
@@ -534,8 +579,9 @@ export default function EmployeeAttendancePage() {
                             </div>
                           )}
 
+                          {/* مقدار التأخير */}
                           <div className="card-field-mobile" style={{ border: 'none', paddingBottom: 0 }}>
-                            <span className="field-label-mobile">مقدار التأخير:</span>
+                            <span className="field-label-mobile">التأخير:</span>
                             {record.status === 'present' && record.delay_minutes > 0 ? (
                               <span className="delay-badge" style={{ fontSize: '12px' }}>
                                 {formatMinutesToHoursAndMinutes(record.delay_minutes)} تأخير
