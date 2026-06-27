@@ -20,7 +20,7 @@ export default function OfficialFooter({ teacherName }) {
       <div className="signature-block-print">
         {/* اليمين: توقيع المعلم */}
         <div className="print-sig-col">
-          <span className="sig-title">توقيع المعلم/المعلمة</span>
+          <span className="sig-title">توقيع المعلم</span>
           <div className="sig-line">الاسم: {teacherName || '.....................................'}</div>
         </div>
 
@@ -33,7 +33,7 @@ export default function OfficialFooter({ teacherName }) {
 
         {/* اليسار: توقيع مدير المدرسة */}
         <div className="print-sig-col">
-          <span className="sig-title">اعتماد قائد/مدير المدرسة</span>
+          <span className="sig-title">مدير المدرسة</span>
           <div className="sig-line">الاسم: {managerName}</div>
         </div>
       </div>

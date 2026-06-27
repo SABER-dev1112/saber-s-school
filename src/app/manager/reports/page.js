@@ -443,14 +443,14 @@ export default function ManagerReportsPage() {
                   <table className="report-table">
                     <thead>
                       <tr>
-                        <th>اسم المعلم</th>
-                        <th>التخصص</th>
-                        <th>رقم الجوال</th>
-                        <th>أيام العمل</th>
-                        <th>الحضور</th>
-                        <th>الغياب</th>
-                        <th>الأعذار والإجازات</th>
-                        <th>التأخير الكلي</th>
+                        <th className="col-name">اسم المعلم</th>
+                        <th className="col-specialty">التخصص</th>
+                        <th className="col-phone">رقم الجوال</th>
+                        <th className="col-num">أيام العمل</th>
+                        <th className="col-num">الحضور</th>
+                        <th className="col-num">الغياب</th>
+                        <th className="col-num">الأعذار والإجازات</th>
+                        <th className="col-delay">التأخير الكلي</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -461,14 +461,14 @@ export default function ManagerReportsPage() {
                       ) : (
                         summaryData.map(item => (
                           <tr key={item.id}>
-                            <td style={{ fontWeight: 'bold' }}>{item.name}</td>
-                            <td>{item.specialty}</td>
-                            <td>{item.phone}</td>
-                            <td>{item.totalDays} يوم</td>
-                            <td style={{ color: '#03543F', fontWeight: 'bold' }}>{item.presentDays}</td>
-                            <td style={{ color: '#9B1C1C', fontWeight: 'bold' }}>{item.absentDays}</td>
-                            <td>{item.excusedDays}</td>
-                            <td style={{ color: item.totalDelayMinutes > 0 ? '#9B1C1C' : 'inherit' }}>
+                            <td className="col-name" style={{ fontWeight: 'bold' }}>{item.name}</td>
+                            <td className="col-specialty">{item.specialty}</td>
+                            <td className="col-phone">{item.phone}</td>
+                            <td className="col-num">{item.totalDays} يوم</td>
+                            <td className="col-num" style={{ color: '#03543F', fontWeight: 'bold' }}>{item.presentDays}</td>
+                            <td className="col-num" style={{ color: '#9B1C1C', fontWeight: 'bold' }}>{item.absentDays}</td>
+                            <td className="col-num">{item.excusedDays}</td>
+                            <td className="col-delay" style={{ color: item.totalDelayMinutes > 0 ? '#9B1C1C' : 'inherit' }}>
                               {item.formattedDelay}
                             </td>
                           </tr>

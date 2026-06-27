@@ -925,3 +925,34 @@ lord-icon {
 .btn-verify-row.verified:hover {
   background-color: #058f58;
 }
+
+/* تحسين توزيع أعمدة جدول التقرير وتوسيع حقل الاسم */
+.report-table th.col-name,
+.report-table td.col-name {
+  width: 25% !important;
+  min-width: 180px !important;
+  text-align: right !important;
+  padding-right: 15px !important;
+}
+
+.report-table th.col-num,
+.report-table td.col-num {
+  width: 8% !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+}
+
+.report-table th.col-specialty,
+.report-table td.col-specialty {
+  width: 15% !important;
+}
+
+.report-table th.col-phone,
+.report-table td.col-phone {
+  width: 15% !important;
+}
+
+.report-table th.col-delay,
+.report-table td.col-delay {
+  width: 12% !important;
+}
