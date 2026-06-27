@@ -1155,4 +1155,32 @@ lord-icon {
     margin: 0 !important;
     width: 100% !important;
   }
+  
+  /* منع استطالة عناوين الهيدر وتدفقها أفقياً */
+  .banner-main-title, .banner-main-title-premium {
+    font-size: 18px !important;
+    white-space: normal !important;
+    text-align: center !important;
+    display: block !important;
+    line-height: 1.4;
+  }
+
+  /* محاذاة وتصغير صندوق تقويم هجري للجوال */
+  .hijri-picker-dropdown {
+    width: 290px !important;
+    right: 50% !important;
+    transform: translateX(50%) !important;
+    left: auto !important;
+  }
+}
+
+/* تنسيقات غلاف المتصفح الرئيسي لمنع انزلاق الصفحة أفقياً في الـ iOS والـ Safari */
+.root-viewport-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }

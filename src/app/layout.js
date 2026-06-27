@@ -12,7 +12,11 @@ export default function RootLayout({ children }) {
       <head>
         <Script src="https://cdn.lordicon.com/lordicon.js" strategy="afterInteractive" />
       </head>
-      <body>{children}</body>
+      <body>
+        <div className="root-viewport-wrapper">
+          {children}
+        </div>
+      </body>
     </html>
   );
 }
