@@ -929,27 +929,27 @@ lord-icon {
 /* تحسين توزيع أعمدة جدول التقرير وتوسيع حقل الاسم */
 .report-table th.col-name,
 .report-table td.col-name {
-  width: 25% !important;
-  min-width: 180px !important;
+  width: 35% !important;
+  min-width: 140px !important;
   text-align: right !important;
-  padding-right: 15px !important;
+  padding-right: 12px !important;
 }
 
 .report-table th.col-num,
 .report-table td.col-num {
-  width: 8% !important;
+  width: 7% !important;
   white-space: nowrap !important;
   text-align: center !important;
 }
 
 .report-table th.col-specialty,
 .report-table td.col-specialty {
-  width: 15% !important;
+  width: 12% !important;
 }
 
 .report-table th.col-phone,
 .report-table td.col-phone {
-  width: 15% !important;
+  width: 12% !important;
 }
 
 .report-table th.col-delay,
