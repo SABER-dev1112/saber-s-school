@@ -1,13 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 
 // البيانات الأولية لمحاكاة النظام بدون Supabase (Seed Data)
-const INITIAL_TEACHERS = [
-  { id: 't1', name: 'أحمد بن عبد الله الغامدي', extra_info: { specialty: 'الرياضيات', phone: '0501234567' } },
-  { id: 't2', name: 'محمد بن علي الحربي', extra_info: { specialty: 'العلوم العامة', phone: '0507654321' } },
-  { id: 't3', name: 'ياسر بن محمد الشهري', extra_info: { specialty: 'اللغة العربية', phone: '0501112223' } },
-  { id: 't4', name: 'سلطان بن فهد العتيبي', extra_info: { specialty: 'التربية الإسلامية', phone: '0503334445' } },
-  { id: 't5', name: 'خالد بن سعيد الدوسري', extra_info: { specialty: 'اللغة الإنجليزية', phone: '0505556667' } }
-];
+const INITIAL_TEACHERS = [];
 
 const INITIAL_SETTINGS = {
   school_name: 'مدرسة أبي دجانه المتوسطه',
@@ -34,23 +28,9 @@ const INITIAL_PASSWORDS = {
   employee: 'staff123'
 };
 
-const INITIAL_ATTENDANCE = [
-  { id: 'a1', teacher_id: 't1', date: '2026-06-25', status: 'present', check_in_time: '06:55', delay_minutes: 0 },
-  { id: 'a2', teacher_id: 't2', date: '2026-06-25', status: 'present', check_in_time: '07:15', delay_minutes: 15 },
-  { id: 'a3', teacher_id: 't3', date: '2026-06-25', status: 'absent', check_in_time: null, delay_minutes: 0 },
-  { id: 'a4', teacher_id: 't4', date: '2026-06-25', status: 'present', check_in_time: '07:00', delay_minutes: 0 },
-  { id: 'a5', teacher_id: 't5', date: '2026-06-25', status: 'excused', check_in_time: null, delay_minutes: 0 },
-  
-  { id: 'a6', teacher_id: 't1', date: '2026-06-24', status: 'present', check_in_time: '07:05', delay_minutes: 5 },
-  { id: 'a7', teacher_id: 't2', date: '2026-06-24', status: 'present', check_in_time: '07:00', delay_minutes: 0 },
-  { id: 'a8', teacher_id: 't3', date: '2026-06-24', status: 'absent', check_in_time: null, delay_minutes: 0 },
-  { id: 'a9', teacher_id: 't4', date: '2026-06-24', status: 'present', check_in_time: '06:50', delay_minutes: 0 },
-  { id: 'a10', teacher_id: 't5', date: '2026-06-24', status: 'present', check_in_time: '07:30', delay_minutes: 30 }
-];
+const INITIAL_ATTENDANCE = [];
 
-const INITIAL_LEAVES = [
-  { id: 'l1', teacher_id: 't5', start_date: '2026-06-25', end_date: '2026-06-25', type: 'إجازة اعتيادية', status: 'approved' }
-];
+const INITIAL_LEAVES = [];
 
 // مساعدات المخزن المحلي (LocalStorage Helper functions)
 const getLocalData = (key, defaultValue) => {

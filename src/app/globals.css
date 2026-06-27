@@ -35,6 +35,8 @@
 
 html, body {
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   min-height: 100vh;
   background-color: var(--light-gray);
   color: var(--text-dark);
@@ -1119,5 +1121,38 @@ lord-icon {
     border: 1px solid var(--border-gray);
     background-color: #f8fafc;
     width: auto;
+  }
+}
+
+/* إصلاح هوامش الهواتف لمنع خروج العناصر عن حواف الشاشة */
+@media (max-width: 768px) {
+  .employee-main-content, .manager-main-content {
+    padding: 15px 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .premium-report-header {
+    padding: 15px 10px !important;
+    border-radius: 0 !important;
+  }
+  
+  .official-header-container {
+    padding: 15px 10px !important;
+    border-radius: 0 !important;
+  }
+  
+  .date-select-card, .attendance-card, .reports-filter-card, .report-display-card, .correction-form-card {
+    padding: 15px 10px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    border-radius: var(--radius-sm) !important;
+  }
+  
+  .table-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
   }
 }
