@@ -417,6 +417,9 @@ export default function ManagerDashboard() {
           display: flex;
           flex-direction: column;
           background-color: var(--light-gray);
+          max-width: 100vw;
+          overflow-x: hidden;
+          position: relative;
         }
         .manager-navbar {
           background-color: var(--white);

@@ -736,6 +736,9 @@ export default function EmployeeAttendancePage() {
           display: flex;
           flex-direction: column;
           background-color: var(--light-gray);
+          max-width: 100vw;
+          overflow-x: hidden;
+          position: relative;
         }
         .employee-navbar {
           background-color: var(--white);
