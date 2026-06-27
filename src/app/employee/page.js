@@ -25,6 +25,16 @@ export default function EmployeeAttendancePage() {
   const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'corrections'
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  // قراءة معامل tab من الرابط (?tab=corrections) بدون useSearchParams
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'corrections') {
+        setActiveTab('corrections');
+      }
+    }
+  }, []);
+
   // لتبويب طلبات التعديل
   const [correctionsList, setCorrectionsList] = useState([]);
   const [selectedCorrectionTeacherId, setSelectedCorrectionTeacherId] = useState('');

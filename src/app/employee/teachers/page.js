@@ -114,6 +114,7 @@ export default function EmployeeTeachersPage() {
       <nav className="employee-navbar no-print">
         <div className="navbar-links">
           <button onClick={() => router.push('/employee')} className="nav-btn">تسجيل الحضور اليومي</button>
+          <button onClick={() => router.push('/employee?tab=corrections')} className="nav-btn">تعديل مستندات</button>
           <button className="nav-btn active">إدارة المعلمين</button>
           <button onClick={() => router.push('/employee/password')} className="nav-btn">تغيير كلمة المرور</button>
         </div>
