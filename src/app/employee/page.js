@@ -349,22 +349,21 @@ export default function EmployeeAttendancePage() {
           <>
             {/* صندوق اختيار التاريخ والبحث */}
             <div className="date-select-card no-print" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div className="date-picker-wrapper" style={{ flex: '1', minWidth: '280px' }}>
+              <div className="employee-filter-grid">
+                <div className="date-picker-wrapper">
                   <label className="date-picker-label">تاريخ التحضير (هجري):</label>
                   <HijriDatePicker value={date} onChange={setDate} placeholder="اختر اليوم التحضيري" />
                 </div>
                 
                 {/* شريط البحث */}
-                <div style={{ flex: '1.2', minWidth: '280px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <label className="date-picker-label" style={{ whiteSpace: 'nowrap' }}>البحث عن معلم:</label>
+                <div className="search-bar-wrapper">
+                  <label className="date-picker-label">البحث عن معلم:</label>
                   <input 
                     type="text" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="ابحث باسم المعلم أو التخصص..." 
-                    className="form-input" 
-                    style={{ margin: 0 }}
+                    className="form-input search-input" 
                   />
                 </div>
               </div>
@@ -386,7 +385,7 @@ export default function EmployeeAttendancePage() {
             <div className="attendance-card">
               <h2 className="card-title">قائمة تحضير المعلمين</h2>
               
-              <div className="table-container">
+              <div className="table-container desktop-only-table">
                 <table>
                   <thead>
                     <tr>
@@ -470,6 +469,88 @@ export default function EmployeeAttendancePage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* بطاقات التحضير المخصصة للهاتف المحمول */}
+              <div className="mobile-only-cards no-print">
+                {filteredTeachers.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                    لا يوجد معلمين مطابقين للبحث.
+                  </div>
+                ) : (
+                  filteredTeachers.map(teacher => {
+                    const record = attendance[teacher.id] || { status: 'present', check_in_time: '07:00', delay_minutes: 0, locked: false };
+                    const isTeacherVerified = !!verified[teacher.id];
+
+                    return (
+                      <div key={teacher.id} className="teacher-mobile-card">
+                        <div className="card-header-mobile">
+                          <div>
+                            <div className="teacher-name-mobile">{teacher.name}</div>
+                            <div className="teacher-specialty-mobile">{teacher.extra_info?.specialty || '-'}</div>
+                          </div>
+                          <div>
+                            <button
+                              type="button"
+                              disabled={isSubmitted || record.locked}
+                              onClick={() => handleToggleVerify(teacher.id)}
+                              className={`btn-verify-row ${isTeacherVerified ? 'verified' : ''}`}
+                              style={{ padding: '5px 10px', fontSize: '12px' }}
+                            >
+                              {isTeacherVerified ? '✓ تم' : '🔔 مراجعة'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="card-body-mobile">
+                          <div className="card-field-mobile">
+                            <span className="field-label-mobile">الحالة اليومية:</span>
+                            {record.locked ? (
+                              <span className="badge-excused" style={{ fontSize: '13px' }}>[إجازة معتمدة مسبقاً]</span>
+                            ) : (
+                              <select
+                                value={record.status}
+                                onChange={(e) => handleStatusChange(teacher.id, e.target.value)}
+                                disabled={isSubmitted}
+                                className="form-select-mobile"
+                              >
+                                <option value="present">حاضر</option>
+                                <option value="absent">غياب بدون إذن</option>
+                                <option value="emergency_pending">إجازة طارئة (انتظار)</option>
+                              </select>
+                            )}
+                          </div>
+
+                          {record.status === 'present' && !record.locked && (
+                            <div className="card-field-mobile">
+                              <span className="field-label-mobile">وقت الحضور:</span>
+                              <input
+                                type="time"
+                                value={record.check_in_time}
+                                onChange={(e) => handleTimeChange(teacher.id, e.target.value)}
+                                disabled={isSubmitted}
+                                className="form-time-input-mobile"
+                              />
+                            </div>
+                          )}
+
+                          <div className="card-field-mobile" style={{ border: 'none', paddingBottom: 0 }}>
+                            <span className="field-label-mobile">مقدار التأخير:</span>
+                            {record.status === 'present' && record.delay_minutes > 0 ? (
+                              <span className="delay-badge" style={{ fontSize: '12px' }}>
+                                {formatMinutesToHoursAndMinutes(record.delay_minutes)} تأخير
+                              </span>
+                            ) : record.status === 'present' ? (
+                              <span className="ontime-badge" style={{ fontSize: '12px' }}>في الموعد</span>
+                            ) : (
+                              <span style={{ color: '#aaa' }}>-</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
               {!isSubmitted && (

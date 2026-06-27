@@ -956,3 +956,168 @@ lord-icon {
 .report-table td.col-delay {
   width: 12% !important;
 }
+
+/* =============================================================
+   تحسينات واجهة الهاتف المحمول لموظف التحضير (Employee Mobile UX)
+   ============================================================= */
+
+.mobile-only-cards {
+  display: none;
+}
+
+.employee-filter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 30px;
+  align-items: center;
+}
+
+.search-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.search-input {
+  margin: 0 !important;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  /* شريط التنقل على الهاتف */
+  .employee-navbar {
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px !important;
+    align-items: stretch !important;
+  }
+  
+  .navbar-links {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+  
+  .nav-btn {
+    width: 100%;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 14px;
+    background-color: #f8fafc;
+    border: 1px solid var(--border-gray) !important;
+    border-radius: var(--radius-sm);
+  }
+  
+  .nav-btn.active {
+    background-color: rgba(21, 68, 90, 0.08) !important;
+    color: var(--primary-navy) !important;
+  }
+  
+  .logout-btn {
+    width: 100% !important;
+    margin-top: 5px;
+    justify-content: center;
+    padding: 10px !important;
+  }
+
+  /* الفلاتر والبحث على الهاتف */
+  .employee-filter-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .date-picker-wrapper, .search-bar-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .date-picker-label {
+    text-align: right;
+  }
+
+  /* إخفاء جدول الديسك توب وإظهار كروت الموبايل */
+  .desktop-only-table {
+    display: none !important;
+  }
+  
+  .mobile-only-cards {
+    display: flex !important;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+  }
+
+  /* بطاقة المدرس في الهاتف */
+  .teacher-mobile-card {
+    background-color: var(--white);
+    border: 1px solid var(--border-gray);
+    border-radius: var(--radius-md);
+    padding: 15px;
+    box-shadow: var(--shadow-sm);
+    border-right: 4px solid var(--primary-navy);
+  }
+
+  .card-header-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+
+  .teacher-name-mobile {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary-navy);
+    text-align: right;
+  }
+
+  .teacher-specialty-mobile {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-top: 2px;
+    text-align: right;
+  }
+
+  .card-body-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .card-field-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed #f1f5f9;
+    padding-bottom: 8px;
+  }
+
+  .field-label-mobile {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+
+  .form-select-mobile {
+    padding: 6px 12px;
+    font-size: 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-gray);
+    background-color: #f8fafc;
+    width: auto;
+    min-width: 130px;
+  }
+
+  .form-time-input-mobile {
+    padding: 5px 10px;
+    font-size: 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-gray);
+    background-color: #f8fafc;
+    width: auto;
+  }
+}
