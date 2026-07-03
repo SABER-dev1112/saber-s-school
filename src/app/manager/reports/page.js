@@ -21,6 +21,7 @@ export default function ManagerReportsPage() {
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [reportSubFilter, setReportSubFilter] = useState('general'); // general / assembly / classes
   
   // نتائج التقرير
   const [filteredRecords, setFilteredRecords] = useState([]);
@@ -97,12 +98,46 @@ export default function ManagerReportsPage() {
           let excusedDays = 0;
           let totalDelayMinutes = 0;
 
+          // طابور الصباح
+          let assemblyPresentDays = 0;
+          let assemblyAbsentDays = 0;
+          let assemblyDelayMinutes = 0;
+
+          // الحصص
+          let classLateCount = 0;
+          let classAbsentCount = 0;
+          let classDelayMinutes = 0;
+
           teacherRecs.forEach(r => {
             if (r.status === 'present') {
               presentDays++;
               totalDelayMinutes += r.delay_minutes || 0;
+
+              // طابور الصباح
+              if (r.assembly_status === 'present') {
+                assemblyPresentDays++;
+              } else if (r.assembly_status === 'late') {
+                assemblyPresentDays++;
+                assemblyDelayMinutes += r.assembly_delay_minutes || 0;
+              } else if (r.assembly_status === 'absent') {
+                assemblyAbsentDays++;
+              } else {
+                assemblyPresentDays++;
+              }
+
+              // الحصص
+              const classDelays = r.class_delays || [];
+              classDelays.forEach(cd => {
+                if (cd.status === 'late') {
+                  classLateCount++;
+                  classDelayMinutes += cd.delay_minutes || 0;
+                } else if (cd.status === 'absent') {
+                  classAbsentCount++;
+                }
+              });
             } else if (r.status === 'absent') {
               absentDays++;
+              assemblyAbsentDays++;
             } else if (r.status === 'excused' || r.status === 'emergency_approved') {
               excusedDays++;
             }
@@ -118,7 +153,19 @@ export default function ManagerReportsPage() {
             absentDays,
             excusedDays,
             totalDelayMinutes,
-            formattedDelay: formatMinutesToHoursAndMinutes(totalDelayMinutes)
+            formattedDelay: formatMinutesToHoursAndMinutes(totalDelayMinutes),
+            
+            // طابور الصباح
+            assemblyPresentDays,
+            assemblyAbsentDays,
+            assemblyDelayMinutes,
+            formattedAssemblyDelay: formatMinutesToHoursAndMinutes(assemblyDelayMinutes),
+
+            // الحصص
+            classLateCount,
+            classAbsentCount,
+            classDelayMinutes,
+            formattedClassDelay: formatMinutesToHoursAndMinutes(classDelayMinutes)
           };
         });
 
@@ -136,11 +183,11 @@ export default function ManagerReportsPage() {
   const handleExcelExport = () => {
     if (reportType === 'collective') {
       const periodText = `من ${gregorianToHijriLong(startDate)} إلى ${gregorianToHijriLong(endDate)}`;
-      exportCollectiveReport(summaryData, settings?.school_name || 'مدرسة أبي دجانه', periodText);
+      exportCollectiveReport(summaryData, settings?.school_name || 'مدرسة أبي دجانه', periodText, reportSubFilter);
     } else {
       if (!selectedTeacher) return;
       const periodText = `من ${gregorianToHijriLong(startDate)} إلى ${gregorianToHijriLong(endDate)}`;
-      exportIndividualReport(selectedTeacher, filteredRecords, settings?.school_name || 'مدرسة أبي دجانه', periodText);
+      exportIndividualReport(selectedTeacher, filteredRecords, settings?.school_name || 'مدرسة أبي دجانه', periodText, reportSubFilter);
     }
   };
 
@@ -159,6 +206,16 @@ export default function ManagerReportsPage() {
       let totalDelay = summaryData.reduce((sum, item) => sum + item.totalDelayMinutes, 0);
       let activeDays = summaryData.reduce((max, item) => Math.max(max, item.totalDays), 0);
 
+      // طابور الصباح
+      let totalAssemblyPresent = summaryData.reduce((sum, item) => sum + item.assemblyPresentDays, 0);
+      let totalAssemblyAbsent = summaryData.reduce((sum, item) => sum + item.assemblyAbsentDays, 0);
+      let totalAssemblyDelay = summaryData.reduce((sum, item) => sum + item.assemblyDelayMinutes, 0);
+
+      // الحصص
+      let totalClassLate = summaryData.reduce((sum, item) => sum + item.classLateCount, 0);
+      let totalClassAbsent = summaryData.reduce((sum, item) => sum + item.classAbsentCount, 0);
+      let totalClassDelay = summaryData.reduce((sum, item) => sum + item.classDelayMinutes, 0);
+
       return {
         totalTeachers,
         activeDays,
@@ -166,7 +223,19 @@ export default function ManagerReportsPage() {
         excused: totalExcused,
         absent: totalAbsent,
         delayText: formatMinutesToHoursAndMinutes(totalDelay),
-        totalDelay
+        totalDelay,
+
+        // طابور الصباح
+        assemblyPresent: totalAssemblyPresent,
+        assemblyAbsent: totalAssemblyAbsent,
+        assemblyDelayText: formatMinutesToHoursAndMinutes(totalAssemblyDelay),
+        totalAssemblyDelay,
+
+        // الحصص
+        classLate: totalClassLate,
+        classAbsent: totalClassAbsent,
+        classDelayText: formatMinutesToHoursAndMinutes(totalClassDelay),
+        totalClassDelay
       };
     } else {
       let activeDays = filteredRecords.length;
@@ -174,7 +243,28 @@ export default function ManagerReportsPage() {
       let excused = filteredRecords.filter(r => r.status === 'excused' || r.status === 'emergency_approved').length;
       let absent = filteredRecords.filter(r => r.status === 'absent').length;
       let totalDelay = filteredRecords.reduce((sum, r) => sum + (r.delay_minutes || 0), 0);
-      
+
+      // طابور الصباح
+      let assemblyPresent = filteredRecords.filter(r => r.status === 'present' && r.assembly_status !== 'absent').length;
+      let assemblyAbsent = filteredRecords.filter(r => r.status === 'absent' || r.assembly_status === 'absent').length;
+      let totalAssemblyDelay = filteredRecords.reduce((sum, r) => sum + (r.assembly_delay_minutes || 0), 0);
+
+      // الحصص
+      let classLate = 0;
+      let classAbsent = 0;
+      let totalClassDelay = 0;
+      filteredRecords.forEach(r => {
+        const delays = r.class_delays || [];
+        delays.forEach(cd => {
+          if (cd.status === 'late') {
+            classLate++;
+            totalClassDelay += cd.delay_minutes || 0;
+          } else if (cd.status === 'absent') {
+            classAbsent++;
+          }
+        });
+      });
+
       return {
         totalTeachers: 1,
         activeDays,
@@ -182,12 +272,39 @@ export default function ManagerReportsPage() {
         excused,
         absent,
         delayText: formatMinutesToHoursAndMinutes(totalDelay),
-        totalDelay
+        totalDelay,
+
+        // طابور الصباح
+        assemblyPresent,
+        assemblyAbsent,
+        assemblyDelayText: formatMinutesToHoursAndMinutes(totalAssemblyDelay),
+        totalAssemblyDelay,
+
+        // الحصص
+        classLate,
+        classAbsent,
+        classDelayText: formatMinutesToHoursAndMinutes(totalClassDelay),
+        totalClassDelay
       };
     }
   };
 
   const reportStats = searched ? getReportStats() : null;
+
+  const getReportTitle = () => {
+    if (reportType === 'collective') {
+      if (reportSubFilter === 'general') return 'تقرير حضور وغياب وتأخير المعلمين الصباحي العام';
+      if (reportSubFilter === 'assembly') return 'تقرير تأخير وغياب طابور الصباح للمعلمين';
+      if (reportSubFilter === 'classes') return 'تقرير تأخر وغياب الحصص اليومية للمعلمين';
+      return 'التقرير الجماعي لحضور وغياب المعلمين';
+    } else {
+      const name = selectedTeacher?.name || '';
+      if (reportSubFilter === 'general') return `تقرير الحضور والغياب الصباحي العام للمعلم: ${name}`;
+      if (reportSubFilter === 'assembly') return `تقرير تأخير وغياب طابور الصباح للمعلم: ${name}`;
+      if (reportSubFilter === 'classes') return `تقرير تأخر وغياب الحصص اليومية للمعلم: ${name}`;
+      return `تقرير الحضور والغياب للمعلم: ${name}`;
+    }
+  };
 
   if (!authorized) {
     return <div className="loading-screen">جاري التحقق من الصلاحيات...</div>;
@@ -225,6 +342,15 @@ export default function ManagerReportsPage() {
               <select value={reportType} onChange={(e) => { setReportType(e.target.value); setSearched(false); }} className="filter-select">
                 <option value="collective">تقرير جماعي للمدرسة كاملة</option>
                 <option value="individual">تقرير فردي لمعلم محدد</option>
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label className="filter-label">نطاق التقرير (الحقول)</label>
+              <select value={reportSubFilter} onChange={(e) => { setReportSubFilter(e.target.value); setSearched(false); }} className="filter-select">
+                <option value="general">التحضير والحضور الصباحي العام</option>
+                <option value="assembly">طابور الصباح (تأخير وغياب)</option>
+                <option value="classes">الحصص اليومية (تأخير وغياب)</option>
               </select>
             </div>
 
@@ -324,7 +450,7 @@ export default function ManagerReportsPage() {
               {/* ترويسة التقرير الرسمي الملونة المدمجة */}
               <div style={{ marginBottom: '25px' }}>
                 <OfficialHeader 
-                  title={reportType === 'collective' ? 'التقرير الجماعي لحضور وغياب المعلمين' : `تقرير الحضور والغياب للمعلم: ${selectedTeacher?.name || ''}`} 
+                  title={getReportTitle()} 
                   customHijriDate={periodText} 
                   reportTypeLabel={reportType === 'collective' ? 'تقرير جماعي للمدرسة' : 'تقرير فردي لمعلم'}
                 />
@@ -378,13 +504,21 @@ export default function ManagerReportsPage() {
                         ></lord-icon>
                       </div>
                       <div className="kpi-info-wrapper">
-                        <span className="kpi-num">{reportStats.present}</span>
-                        <span className="kpi-label">أيام الحضور</span>
+                        <span className="kpi-num">
+                          {(reportSubFilter === 'general' || reportSubFilter === 'all') && reportStats.present}
+                          {reportSubFilter === 'assembly' && reportStats.assemblyPresent}
+                          {reportSubFilter === 'classes' && reportStats.classLate}
+                        </span>
+                        <span className="kpi-label">
+                          {(reportSubFilter === 'general' || reportSubFilter === 'all') && 'أيام الحضور'}
+                          {reportSubFilter === 'assembly' && 'حضور الطابور'}
+                          {reportSubFilter === 'classes' && 'حالات تأخر الحصص'}
+                        </span>
                       </div>
                     </div>
                   )}
 
-                  {showExcusedDays && (
+                  {showExcusedDays && (reportSubFilter !== 'assembly') && (
                     <div className="report-kpi-card kpi-excused">
                       <div className="kpi-icon-wrapper">
                         <lord-icon
@@ -395,13 +529,19 @@ export default function ManagerReportsPage() {
                         ></lord-icon>
                       </div>
                       <div className="kpi-info-wrapper">
-                        <span className="kpi-num">{reportStats.excused}</span>
-                        <span className="kpi-label">الأعذار والإجازات</span>
+                        <span className="kpi-num">
+                          {(reportSubFilter === 'general' || reportSubFilter === 'all') && reportStats.excused}
+                          {reportSubFilter === 'classes' && reportStats.classAbsent}
+                        </span>
+                        <span className="kpi-label">
+                          {(reportSubFilter === 'general' || reportSubFilter === 'all') && 'الأعذار والإجازات'}
+                          {reportSubFilter === 'classes' && 'حالات غياب الحصص'}
+                        </span>
                       </div>
                     </div>
                   )}
 
-                  {showAbsentDays && (
+                  {showAbsentDays && (reportSubFilter !== 'classes') && (
                     <div className="report-kpi-card kpi-absent">
                       <div className="kpi-icon-wrapper">
                         <lord-icon
@@ -412,8 +552,14 @@ export default function ManagerReportsPage() {
                         ></lord-icon>
                       </div>
                       <div className="kpi-info-wrapper">
-                        <span className="kpi-num" style={{ color: '#EF4444' }}>{reportStats.absent}</span>
-                        <span className="kpi-label">الغياب بدون عذر</span>
+                        <span className="kpi-num" style={{ color: '#EF4444' }}>
+                          {(reportSubFilter === 'general' || reportSubFilter === 'all') && reportStats.absent}
+                          {reportSubFilter === 'assembly' && reportStats.assemblyAbsent}
+                        </span>
+                        <span className="kpi-label">
+                          {(reportSubFilter === 'general' || reportSubFilter === 'all') && 'الغياب بدون عذر'}
+                          {reportSubFilter === 'assembly' && 'غياب الطابور'}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -429,8 +575,16 @@ export default function ManagerReportsPage() {
                         ></lord-icon>
                       </div>
                       <div className="kpi-info-wrapper">
-                        <span className="kpi-num" style={{ color: '#DC2626' }}>{reportStats.delayText}</span>
-                        <span className="kpi-label">التأخير الكلي</span>
+                        <span className="kpi-num" style={{ color: '#DC2626' }}>
+                          {(reportSubFilter === 'general' || reportSubFilter === 'all') && reportStats.delayText}
+                          {reportSubFilter === 'assembly' && reportStats.assemblyDelayText}
+                          {reportSubFilter === 'classes' && reportStats.classDelayText}
+                        </span>
+                        <span className="kpi-label">
+                          {(reportSubFilter === 'general' || reportSubFilter === 'all') && 'التأخير الكلي'}
+                          {reportSubFilter === 'assembly' && 'تأخير الطابور الكلي'}
+                          {reportSubFilter === 'classes' && 'تأخير الحصص الكلي'}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -438,39 +592,88 @@ export default function ManagerReportsPage() {
               )}
 
               {/* جدول التقرير الجماعي */}
-              {reportType === 'collective' && (
+              {reportType === 'collective' && reportSubFilter !== 'all' && (
                 <div className="table-container">
                   <table className="report-table">
                     <thead>
-                      <tr>
-                        <th className="col-name">اسم المعلم</th>
-                        <th className="col-specialty">التخصص</th>
-                        <th className="col-phone">رقم الجوال</th>
-                        <th className="col-num">أيام العمل</th>
-                        <th className="col-num">الحضور</th>
-                        <th className="col-num">الغياب</th>
-                        <th className="col-num">الأعذار والإجازات</th>
-                        <th className="col-delay">التأخير الكلي</th>
-                      </tr>
+                      {reportSubFilter === 'general' && (
+                        <tr>
+                          <th className="col-name">اسم المعلم</th>
+                          <th className="col-specialty">التخصص</th>
+                          <th className="col-phone">رقم الجوال</th>
+                          <th className="col-num">أيام العمل</th>
+                          <th className="col-num">الحضور</th>
+                          <th className="col-num">الغياب</th>
+                          <th className="col-num">الأعذار والإجازات</th>
+                          <th className="col-delay">التأخير الكلي</th>
+                        </tr>
+                      )}
+                      {reportSubFilter === 'assembly' && (
+                        <tr>
+                          <th className="col-name">اسم المعلم</th>
+                          <th className="col-specialty">التخصص</th>
+                          <th className="col-num">أيام العمل</th>
+                          <th className="col-num">حضور الطابور</th>
+                          <th className="col-num">غياب الطابور</th>
+                          <th className="col-delay">تأخير الطابور</th>
+                        </tr>
+                      )}
+                      {reportSubFilter === 'classes' && (
+                        <tr>
+                          <th className="col-name">اسم المعلم</th>
+                          <th className="col-specialty">التخصص</th>
+                          <th className="col-num">أيام العمل</th>
+                          <th className="col-num">تأخير الحصص (حالات)</th>
+                          <th className="col-num">غياب الحصص (حالات)</th>
+                          <th className="col-delay">تأخير الحصص الكلي</th>
+                        </tr>
+                      )}
                     </thead>
                     <tbody>
                       {summaryData.length === 0 ? (
                         <tr>
-                          <td colSpan="8" style={{ textAlign: 'center' }}>لا توجد بيانات حضور مسجلة في هذه الفترة.</td>
+                          <td colSpan={reportSubFilter === 'general' ? "8" : "6"} style={{ textAlign: 'center' }}>لا توجد بيانات حضور مسجلة في هذه الفترة.</td>
                         </tr>
                       ) : (
                         summaryData.map(item => (
                           <tr key={item.id}>
                             <td className="col-name" style={{ fontWeight: 'bold' }}>{item.name}</td>
                             <td className="col-specialty">{item.specialty}</td>
-                            <td className="col-phone">{item.phone}</td>
-                            <td className="col-num">{item.totalDays} يوم</td>
-                            <td className="col-num" style={{ color: '#03543F', fontWeight: 'bold' }}>{item.presentDays}</td>
-                            <td className="col-num" style={{ color: '#9B1C1C', fontWeight: 'bold' }}>{item.absentDays}</td>
-                            <td className="col-num">{item.excusedDays}</td>
-                            <td className="col-delay" style={{ color: item.totalDelayMinutes > 0 ? '#9B1C1C' : 'inherit' }}>
-                              {item.formattedDelay}
-                            </td>
+                            
+                            {reportSubFilter === 'general' && (
+                              <>
+                                <td className="col-phone">{item.phone}</td>
+                                <td className="col-num">{item.totalDays} يوم</td>
+                                <td className="col-num" style={{ color: '#03543F', fontWeight: 'bold' }}>{item.presentDays}</td>
+                                <td className="col-num" style={{ color: '#9B1C1C', fontWeight: 'bold' }}>{item.absentDays}</td>
+                                <td className="col-num">{item.excusedDays}</td>
+                                <td className="col-delay" style={{ color: item.totalDelayMinutes > 0 ? '#9B1C1C' : 'inherit' }}>
+                                  {item.formattedDelay}
+                                </td>
+                              </>
+                            )}
+
+                            {reportSubFilter === 'assembly' && (
+                              <>
+                                <td className="col-num">{item.totalDays} يوم</td>
+                                <td className="col-num" style={{ color: '#03543F', fontWeight: 'bold' }}>{item.assemblyPresentDays}</td>
+                                <td className="col-num" style={{ color: '#9B1C1C', fontWeight: 'bold' }}>{item.assemblyAbsentDays}</td>
+                                <td className="col-delay" style={{ color: item.assemblyDelayMinutes > 0 ? '#9B1C1C' : 'inherit' }}>
+                                  {item.formattedAssemblyDelay}
+                                </td>
+                              </>
+                            )}
+
+                            {reportSubFilter === 'classes' && (
+                              <>
+                                <td className="col-num">{item.totalDays} يوم</td>
+                                <td className="col-num" style={{ color: 'var(--accent-gold)', fontWeight: 'bold' }}>{item.classLateCount}</td>
+                                <td className="col-num" style={{ color: '#9B1C1C', fontWeight: 'bold' }}>{item.classAbsentCount}</td>
+                                <td className="col-delay" style={{ color: item.classDelayMinutes > 0 ? '#9B1C1C' : 'inherit' }}>
+                                  {item.formattedClassDelay}
+                                </td>
+                              </>
+                            )}
                           </tr>
                         ))
                       )}
@@ -491,18 +694,39 @@ export default function ManagerReportsPage() {
                   <div className="table-container">
                     <table className="report-table">
                       <thead>
-                        <tr>
-                          <th>التاريخ الهجري</th>
-                          <th>التاريخ الميلادي</th>
-                          <th>الحالة اليومية</th>
-                          <th>وقت الحضور</th>
-                          <th>دقائق التأخير</th>
-                        </tr>
+                        {reportSubFilter === 'general' && (
+                          <tr>
+                            <th>التاريخ الهجري</th>
+                            <th>التاريخ الميلادي</th>
+                            <th>الحالة اليومية</th>
+                            <th>وقت الحضور</th>
+                            <th>دقائق التأخير</th>
+                          </tr>
+                        )}
+                        {reportSubFilter === 'assembly' && (
+                          <tr>
+                            <th>التاريخ الهجري</th>
+                            <th>التاريخ الميلادي</th>
+                            <th>حالة طابور الصباح</th>
+                            <th>وقت الحضور للطابور</th>
+                            <th>دقائق تأخير الطابور</th>
+                          </tr>
+                        )}
+                        {reportSubFilter === 'classes' && (
+                          <tr>
+                            <th>التاريخ الهجري</th>
+                            <th>التاريخ الميلادي</th>
+                            <th>رقم الحصة</th>
+                            <th>الإجراء</th>
+                            <th>دقائق التأخير</th>
+                            <th>ملاحظات</th>
+                          </tr>
+                        )}
                       </thead>
                       <tbody>
                         {filteredRecords.length === 0 ? (
                           <tr>
-                            <td colSpan="5" style={{ textAlign: 'center' }}>لا توجد سجلات حضور مسجلة للمعلم في هذه الفترة.</td>
+                            <td colSpan={reportSubFilter === 'classes' ? "6" : "5"} style={{ textAlign: 'center' }}>لا توجد سجلات حضور مسجلة للمعلم في هذه الفترة.</td>
                           </tr>
                         ) : (
                           filteredRecords.map(rec => {
@@ -519,25 +743,96 @@ export default function ManagerReportsPage() {
                               statusClass = 'status-pending-pill';
                             }
   
-                            return (
-                              <tr key={rec.id}>
-                                <td style={{ fontWeight: 'bold' }}>{rec.hijriDate}</td>
-                                <td>{rec.date}</td>
-                                <td>
-                                  <span className={`status-pill-badge ${statusClass}`}>{statusText}</span>
-                                </td>
-                                <td>{rec.check_in_time || '-'}</td>
-                                <td>
-                                  {rec.delay_minutes > 0 ? (
-                                    <span className="delay-badge-pill">{rec.delay_minutes} دقيقة</span>
-                                  ) : rec.status === 'present' ? (
-                                    <span className="ontime-badge-pill">في الموعد</span>
-                                  ) : (
-                                    <span>-</span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
+                            if (reportSubFilter === 'general') {
+                              return (
+                                <tr key={rec.id}>
+                                  <td style={{ fontWeight: 'bold' }}>{rec.hijriDate}</td>
+                                  <td>{rec.date}</td>
+                                  <td>
+                                    <span className={`status-pill-badge ${statusClass}`}>{statusText}</span>
+                                  </td>
+                                  <td>{rec.check_in_time || '-'}</td>
+                                  <td>
+                                    {rec.delay_minutes > 0 ? (
+                                      <span className="delay-badge-pill">{rec.delay_minutes} دقيقة</span>
+                                    ) : rec.status === 'present' ? (
+                                      <span className="ontime-badge-pill">في الموعد</span>
+                                    ) : (
+                                      <span>-</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            }
+
+                            if (reportSubFilter === 'assembly') {
+                              let assemblyStatusText = 'حاضر في الموعد';
+                              let assemblyStatusClass = 'status-present-pill';
+                              if (rec.status !== 'present') {
+                                assemblyStatusText = 'غائب (غياب اليوم)';
+                                assemblyStatusClass = 'status-absent-pill';
+                              } else if (rec.assembly_status === 'late') {
+                                assemblyStatusText = 'متأخر';
+                                assemblyStatusClass = 'status-pending-pill';
+                              } else if (rec.assembly_status === 'absent') {
+                                assemblyStatusText = 'غائب عن الطابور';
+                                assemblyStatusClass = 'status-absent-pill';
+                              }
+
+                              return (
+                                <tr key={rec.id}>
+                                  <td style={{ fontWeight: 'bold' }}>{rec.hijriDate}</td>
+                                  <td>{rec.date}</td>
+                                  <td>
+                                    <span className={`status-pill-badge ${assemblyStatusClass}`}>{assemblyStatusText}</span>
+                                  </td>
+                                  <td>{rec.status === 'present' && rec.assembly_status === 'late' ? (rec.assembly_check_in_time || '-') : '-'}</td>
+                                  <td>
+                                    {rec.status === 'present' && rec.assembly_status === 'late' && rec.assembly_delay_minutes > 0 ? (
+                                      <span className="delay-badge-pill">{rec.assembly_delay_minutes} دقيقة</span>
+                                    ) : rec.status === 'present' && rec.assembly_status === 'present' ? (
+                                      <span className="ontime-badge-pill">في الموعد</span>
+                                    ) : (
+                                      <span>-</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            }
+
+                            if (reportSubFilter === 'classes') {
+                              const classDelays = rec.class_delays || [];
+                              if (classDelays.length === 0) {
+                                return (
+                                  <tr key={`ind-cls-empty-${rec.id}`}>
+                                    <td style={{ fontWeight: 'bold' }}>{rec.hijriDate}</td>
+                                    <td>{rec.date}</td>
+                                    <td colSpan="4" style={{ color: '#03543F', fontWeight: '600' }}>ملتزم بجميع حصص اليوم المحددة</td>
+                                  </tr>
+                                );
+                              }
+
+                              return classDelays.map((cd, cdIndex) => (
+                                <tr key={`ind-cls-${rec.id}-${cdIndex}`}>
+                                  {cdIndex === 0 ? (
+                                    <>
+                                      <td rowSpan={classDelays.length} style={{ fontWeight: 'bold', verticalAlign: 'middle' }}>{rec.hijriDate}</td>
+                                      <td rowSpan={classDelays.length} style={{ verticalAlign: 'middle' }}>{rec.date}</td>
+                                    </>
+                                  ) : null}
+                                  <td>الحصة {cd.class_number}</td>
+                                  <td>
+                                    <span className={`status-pill-badge ${cd.status === 'late' ? 'status-pending-pill' : 'status-absent-pill'}`}>
+                                      {cd.status === 'late' ? 'تأخر عن الحصة' : 'غياب عن الحصة'}
+                                    </span>
+                                  </td>
+                                  <td>{cd.status === 'late' ? `${cd.delay_minutes} دقيقة` : '-'}</td>
+                                  <td>{cd.notes || '-'}</td>
+                                </tr>
+                              ));
+                            }
+
+                            return null;
                           })
                         )}
                       </tbody>

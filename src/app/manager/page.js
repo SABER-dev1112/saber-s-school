@@ -51,6 +51,8 @@ export default function ManagerDashboard() {
 
       // حساب الإحصائيات اليومية لليوم الحالي
       let present = 0, absent = 0, excused = 0, pending = 0, late = 0;
+      let assemblyLate = 0, assemblyAbsent = 0;
+      let classLate = 0, classAbsent = 0;
       
       teachersData.forEach(t => {
         const record = attendanceToday.find(r => r.teacher_id === t.id);
@@ -58,6 +60,14 @@ export default function ManagerDashboard() {
           if (record.status === 'present') {
             present++;
             if (record.delay_minutes > 0) late++;
+            if (record.assembly_status === 'late') assemblyLate++;
+            if (record.assembly_status === 'absent') assemblyAbsent++;
+            
+            const delays = record.class_delays || [];
+            delays.forEach(cd => {
+              if (cd.status === 'late') classLate++;
+              if (cd.status === 'absent') classAbsent++;
+            });
           } else if (record.status === 'absent') {
             absent++;
           } else if (record.status === 'excused' || record.status === 'emergency_approved') {
@@ -71,7 +81,7 @@ export default function ManagerDashboard() {
         }
       });
 
-      setStats({ present, absent, excused, pending, late });
+      setStats({ present, absent, excused, pending, late, assemblyLate, assemblyAbsent, classLate, classAbsent });
 
       // تصفية الإجازات الطارئة المعلقة لليوم الحالي
       const pendingLeaves = attendanceToday.filter(r => r.status === 'emergency_pending').map(r => {
@@ -241,7 +251,7 @@ export default function ManagerDashboard() {
             <span className="stat-value">{stats.present}</span>
           </div>
           <div className="stat-card stat-late">
-            <span className="stat-label">المتأخرين اليوم</span>
+            <span className="stat-label">المتأخرين صباحاً اليوم</span>
             <span className="stat-value">{stats.late}</span>
           </div>
           <div className="stat-card stat-excused">
@@ -251,6 +261,26 @@ export default function ManagerDashboard() {
           <div className="stat-card stat-absent">
             <span className="stat-label">الغائبين بدون عذر</span>
             <span className="stat-value">{stats.absent}</span>
+          </div>
+        </div>
+
+        {/* إحصائيات الطابور والحصص اليومية */}
+        <div className="stats-grid" style={{ marginTop: '-15px', marginBottom: '30px' }}>
+          <div className="stat-card" style={{ borderTopColor: 'var(--accent-teal)' }}>
+            <span className="stat-label">متأخري طابور الصباح اليوم</span>
+            <span className="stat-value" style={{ color: 'var(--accent-teal)' }}>{stats.assemblyLate || 0}</span>
+          </div>
+          <div className="stat-card" style={{ borderTopColor: '#EF4444' }}>
+            <span className="stat-label">غائبي طابور الصباح اليوم</span>
+            <span className="stat-value" style={{ color: '#EF4444' }}>{stats.assemblyAbsent || 0}</span>
+          </div>
+          <div className="stat-card" style={{ borderTopColor: 'var(--accent-gold)' }}>
+            <span className="stat-label">حالات تأخر الحصص اليوم</span>
+            <span className="stat-value" style={{ color: 'var(--accent-gold)' }}>{stats.classLate || 0}</span>
+          </div>
+          <div className="stat-card" style={{ borderTopColor: '#EF4444' }}>
+            <span className="stat-label">حالات غياب الحصص اليوم</span>
+            <span className="stat-value" style={{ color: '#EF4444' }}>{stats.classAbsent || 0}</span>
           </div>
         </div>
 
@@ -318,6 +348,23 @@ export default function ManagerDashboard() {
                           <p style={{ fontSize: '14px', margin: '6px 0 0 0', color: 'var(--text-dark)' }}>
                             <strong>التعديل المطلوب:</strong> {reqText}
                           </p>
+                          {corr.status === 'present' && (
+                            <div style={{ fontSize: '13px', margin: '6px 0 0 0', padding: '6px 10px', backgroundColor: '#F8FAFC', borderRadius: '4px', border: '1px solid var(--border-gray)' }}>
+                              <div><strong>طابور الصباح:</strong> {corr.assembly_status === 'present' ? 'حاضر في الموعد' : corr.assembly_status === 'late' ? `متأخر (${corr.assembly_delay_minutes} دقيقة)` : 'غائب عن الطابور'}</div>
+                              {corr.class_delays && corr.class_delays.length > 0 && (
+                                <div style={{ marginTop: '4px' }}>
+                                  <strong>تصحيح الحصص:</strong>
+                                  <ul style={{ paddingRight: '15px', listStyleType: 'circle', fontSize: '12px' }}>
+                                    {corr.class_delays.map((cd, index) => (
+                                      <li key={index}>
+                                        الحصة {cd.class_number}: {cd.status === 'late' ? `تأخر (${cd.delay_minutes} دقيقة)` : 'غياب'} {cd.notes ? `(${cd.notes})` : ''}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
                           <p style={{ fontSize: '13px', margin: '4px 0 0 0', color: 'var(--text-light)', fontStyle: 'italic' }}>
                             <strong>السبب للتعديل:</strong> {corr.reason}
                           </p>
@@ -354,9 +401,11 @@ export default function ManagerDashboard() {
                 <thead>
                   <tr>
                     <th>اسم المعلم</th>
-                    <th>الحالة</th>
-                    <th>وقت الحضور</th>
-                    <th>التأخير</th>
+                    <th>الحالة العامة</th>
+                    <th>وقت الحضور العام</th>
+                    <th>تأخير الصباح</th>
+                    <th>طابور الصباح</th>
+                    <th>إجراءات الحصص اليومية</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -365,7 +414,11 @@ export default function ManagerDashboard() {
                     let statusText = 'غياب بدون إذن';
                     let statusClass = 'status-absent';
                     let checkIn = '-';
-                    let delayText = '-';
+                    let delayText = 'في الموعد';
+                    let assemblyText = 'حضر في الموعد';
+                    let assemblyClass = 'status-present';
+                    let classesText = 'ملتزم بالحصص';
+                    let classesClass = 'status-present';
 
                     if (record) {
                       if (record.status === 'present') {
@@ -375,13 +428,50 @@ export default function ManagerDashboard() {
                         delayText = record.delay_minutes > 0 
                           ? `${record.delay_minutes} دقيقة` 
                           : 'في الموعد';
+                        
+                        // طابور الصباح
+                        if (record.assembly_status === 'late') {
+                          assemblyText = `متأخر ${record.assembly_delay_minutes} د`;
+                          assemblyClass = 'status-pending';
+                        } else if (record.assembly_status === 'absent') {
+                          assemblyText = 'غائب عن الطابور';
+                          assemblyClass = 'status-absent';
+                        }
+
+                        // الحصص
+                        const delays = record.class_delays || [];
+                        if (delays.length > 0) {
+                          const lateCount = delays.filter(d => d.status === 'late').length;
+                          const absentCount = delays.filter(d => d.status === 'absent').length;
+                          let parts = [];
+                          if (lateCount > 0) parts.push(`تأخر ${lateCount} حصص`);
+                          if (absentCount > 0) parts.push(`غياب ${absentCount} حصص`);
+                          classesText = parts.join(' و ');
+                          classesClass = 'status-pending';
+                        }
                       } else if (record.status === 'excused' || record.status === 'emergency_approved') {
                         statusText = 'إجازة معتمدة';
                         statusClass = 'status-excused';
+                        delayText = '-';
+                        assemblyText = '-';
+                        assemblyClass = '';
+                        classesText = '-';
+                        classesClass = '';
                       } else if (record.status === 'emergency_pending') {
                         statusText = 'إجازة طارئة (معلقة)';
                         statusClass = 'status-pending';
+                        delayText = '-';
+                        assemblyText = '-';
+                        assemblyClass = '';
+                        classesText = '-';
+                        classesClass = '';
                       }
+                    } else {
+                      delayText = '-';
+                      assemblyText = '-';
+                      assemblyClass = '';
+                      classesText = '-';
+                      classesClass = '';
                     }
 
                     return (
@@ -397,6 +487,12 @@ export default function ManagerDashboard() {
                           ) : (
                             <span>{delayText}</span>
                           )}
+                        </td>
+                        <td>
+                          {assemblyClass ? <span className={`status-badge ${assemblyClass}`}>{assemblyText}</span> : '-'}
+                        </td>
+                        <td>
+                          {classesClass ? <span className={`status-badge ${classesClass}`}>{classesText}</span> : '-'}
                         </td>
                       </tr>
                     );

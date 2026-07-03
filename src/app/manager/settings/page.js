@@ -17,6 +17,7 @@ export default function ManagerSettingsPage() {
   const [schoolName, setSchoolName] = useState('');
   const [managerName, setManagerName] = useState('');
   const [startTime, setStartTime] = useState('');
+  const [assemblyStartTime, setAssemblyStartTime] = useState('');
   const [city, setCity] = useState('');
   const [semester, setSemester] = useState('');
   const [domain, setDomain] = useState('');
@@ -64,6 +65,7 @@ export default function ManagerSettingsPage() {
       setSchoolName(data.school_name);
       setManagerName(data.manager_name);
       setStartTime(data.start_time);
+      setAssemblyStartTime(data.assembly_start_time || '06:30');
       setCity(data.header_metadata?.city || '');
       setSemester(data.header_metadata?.semester || '');
       setDomain(data.header_metadata?.domain || '');
@@ -83,6 +85,7 @@ export default function ManagerSettingsPage() {
         school_name: schoolName,
         manager_name: managerName,
         start_time: startTime,
+        assembly_start_time: assemblyStartTime,
         header_metadata: { city, semester, domain }
       });
       setMessage({ text: 'تم حفظ الإعدادات الأساسية بنجاح.', type: 'success' });
@@ -286,6 +289,10 @@ export default function ManagerSettingsPage() {
               <div className="form-group">
                 <label className="form-label">وقت بداية الدوام الرسمي *</label>
                 <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required className="form-input" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">وقت بداية طابور الصباح الرسمي *</label>
+                <input type="time" value={assemblyStartTime} onChange={(e) => setAssemblyStartTime(e.target.value)} required className="form-input" />
               </div>
               <div className="form-group">
                 <label className="form-label">المدينة/إدارة التعليم *</label>

@@ -44,6 +44,18 @@ export default function EmployeeAttendancePage() {
   const [correctionReason, setCorrectionReason] = useState('');
   const [submittingCorrection, setSubmittingCorrection] = useState(false);
 
+  // التبويبات الفرعية الجديدة
+  const [activeSubTab, setActiveSubTab] = useState('general'); // 'general' | 'assembly' | 'classes'
+  const [activeClassModalTeacher, setActiveClassModalTeacher] = useState(null);
+  const [modalClassDelays, setModalClassDelays] = useState([]);
+
+  // حقول تصحيح الطابور والحصص الجديدة
+  const [correctionAssemblyStatus, setCorrectionAssemblyStatus] = useState('present');
+  const [correctionAssemblyTime, setCorrectionAssemblyTime] = useState('06:30');
+  const [correctionAssemblyDelayMinutes, setCorrectionAssemblyDelayMinutes] = useState(0);
+  const [correctionAssemblyEntryMode, setCorrectionAssemblyEntryMode] = useState('minutes');
+  const [correctionClassDelays, setCorrectionClassDelays] = useState([]);
+
   // مودال التنبيهات المخصص
   const [modalConfig, setModalConfig] = useState({
     show: false,
@@ -121,6 +133,10 @@ export default function EmployeeAttendancePage() {
               status: 'excused',
               check_in_time: '',
               delay_minutes: 0,
+              assembly_status: 'present',
+              assembly_check_in_time: '',
+              assembly_delay_minutes: 0,
+              class_delays: [],
               locked: true
             };
             verifiedMap[teacher.id] = true; // الإجازات معتمدة ومراجعة تلقائياً
@@ -129,6 +145,10 @@ export default function EmployeeAttendancePage() {
               status: existingRecord.status,
               check_in_time: existingRecord.check_in_time || '',
               delay_minutes: existingRecord.delay_minutes || 0,
+              assembly_status: existingRecord.assembly_status || 'present',
+              assembly_check_in_time: existingRecord.assembly_check_in_time || '',
+              assembly_delay_minutes: existingRecord.assembly_delay_minutes || 0,
+              class_delays: existingRecord.class_delays || [],
               locked: false
             };
             verifiedMap[teacher.id] = true; // الحضور المسجل سابقاً مراجع ومؤكد
@@ -138,6 +158,10 @@ export default function EmployeeAttendancePage() {
               check_in_time: '',   // فارغ = حضر في الموعد (قبل أو عند 6:50)
               delay_minutes: 0,
               isLate: false,       // افتراضياً: حضر في الموعد
+              assembly_status: 'present',
+              assembly_check_in_time: '',
+              assembly_delay_minutes: 0,
+              class_delays: [],
               locked: false
             };
             verifiedMap[teacher.id] = false;
@@ -209,6 +233,101 @@ export default function EmployeeAttendancePage() {
     }));
   };
 
+  // معالجة تغيير حالة طابور الصباح
+  const handleAssemblyStatusChange = (teacherId, assemblyStatus) => {
+    setAttendance(prev => {
+      const updated = { ...prev };
+      const startTime = settings?.assembly_start_time || '06:30';
+      updated[teacherId] = {
+        ...updated[teacherId],
+        assembly_status: assemblyStatus,
+        assembly_check_in_time: assemblyStatus === 'late' ? (updated[teacherId].assembly_check_in_time || startTime) : '',
+        assembly_delay_minutes: assemblyStatus === 'late' ? (updated[teacherId].assembly_delay_minutes || 5) : 0,
+        assembly_entry_mode: updated[teacherId].assembly_entry_mode || 'minutes'
+      };
+      return updated;
+    });
+    setVerified(prev => ({ ...prev, [teacherId]: true }));
+  };
+
+  const handleAssemblyEntryModeChange = (teacherId, mode) => {
+    setAttendance(prev => {
+      const updated = { ...prev };
+      updated[teacherId] = {
+        ...updated[teacherId],
+        assembly_entry_mode: mode
+      };
+      return updated;
+    });
+  };
+
+  const handleAssemblyMinutesChange = (teacherId, minutes) => {
+    setAttendance(prev => {
+      const updated = { ...prev };
+      updated[teacherId] = {
+        ...updated[teacherId],
+        assembly_delay_minutes: parseInt(minutes) || 0
+      };
+      return updated;
+    });
+    setVerified(prev => ({ ...prev, [teacherId]: true }));
+  };
+
+  const handleAssemblyTimeChange = (teacherId, time) => {
+    setAttendance(prev => {
+      const updated = { ...prev };
+      const startTime = settings?.assembly_start_time || '06:30';
+      const delay = calculateLateness(time, startTime);
+      updated[teacherId] = {
+        ...updated[teacherId],
+        assembly_check_in_time: time,
+        assembly_delay_minutes: delay
+      };
+      return updated;
+    });
+    setVerified(prev => ({ ...prev, [teacherId]: true }));
+  };
+
+  // دوال مودال الحصص
+  const openClassDelaysModal = (teacher) => {
+    setActiveClassModalTeacher(teacher);
+    const rec = attendance[teacher.id] || {};
+    setModalClassDelays(rec.class_delays || []);
+  };
+
+  const addClassDelayRow = () => {
+    setModalClassDelays(prev => [
+      ...prev,
+      { class_number: 1, status: 'late', delay_minutes: 5, notes: '' }
+    ]);
+  };
+
+  const updateClassDelayRow = (index, field, value) => {
+    setModalClassDelays(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const removeClassDelayRow = (index) => {
+    setModalClassDelays(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const saveClassDelaysModal = () => {
+    if (!activeClassModalTeacher) return;
+    setAttendance(prev => {
+      const updated = { ...prev };
+      updated[activeClassModalTeacher.id] = {
+        ...updated[activeClassModalTeacher.id],
+        class_delays: modalClassDelays
+      };
+      return updated;
+    });
+    setVerified(prev => ({ ...prev, [activeClassModalTeacher.id]: true }));
+    setActiveClassModalTeacher(null);
+  };
+
   // تفعيل المودال النهائي
   const showFinalConfirmation = () => {
     setModalConfig({
@@ -255,7 +374,11 @@ export default function EmployeeAttendancePage() {
           date: date,
           status: item.status,
           check_in_time: item.status === 'present' ? item.check_in_time : null,
-          delay_minutes: item.delay_minutes || 0
+          delay_minutes: item.delay_minutes || 0,
+          assembly_status: item.status === 'present' ? (item.assembly_status || 'present') : 'present',
+          assembly_check_in_time: item.status === 'present' ? (item.assembly_check_in_time || null) : null,
+          assembly_delay_minutes: item.status === 'present' ? (item.assembly_delay_minutes || 0) : 0,
+          class_delays: item.status === 'present' ? (item.class_delays || []) : []
         };
       });
 
@@ -288,6 +411,15 @@ export default function EmployeeAttendancePage() {
         delay = calculateLateness(correctionTime, settings.start_time);
       }
 
+      let assemblyDelay = 0;
+      if (correctionStatus === 'present' && correctionAssemblyStatus === 'late') {
+        if (correctionAssemblyEntryMode === 'time') {
+          assemblyDelay = calculateLateness(correctionAssemblyTime, settings?.assembly_start_time || '06:30');
+        } else {
+          assemblyDelay = parseInt(correctionAssemblyDelayMinutes) || 0;
+        }
+      }
+
       await db.submitCorrection(
         selectedCorrectionTeacherId,
         teacherName,
@@ -295,6 +427,10 @@ export default function EmployeeAttendancePage() {
         correctionStatus,
         correctionStatus === 'present' ? correctionTime : null,
         delay,
+        correctionStatus === 'present' ? correctionAssemblyStatus : 'present',
+        correctionStatus === 'present' && correctionAssemblyStatus === 'late' && correctionAssemblyEntryMode === 'time' ? correctionAssemblyTime : null,
+        correctionStatus === 'present' ? assemblyDelay : 0,
+        correctionStatus === 'present' ? correctionClassDelays : [],
         correctionReason
       );
 
@@ -303,6 +439,7 @@ export default function EmployeeAttendancePage() {
 
       setCorrectionDate('');
       setCorrectionReason('');
+      setCorrectionClassDelays([]);
       alert('تم تقديم طلب تعديل المستند بنجاح وهو بانتظار موافقة المدير.');
     } catch (err) {
       console.error(err);
@@ -391,97 +528,261 @@ export default function EmployeeAttendancePage() {
             {/* جدول التحضير */}
             <div className="attendance-card">
               <h2 className="card-title">قائمة تحضير المعلمين</h2>
+
+              <div className="sub-tabs-container no-print">
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('general')}
+                  className={`sub-tab-btn ${activeSubTab === 'general' ? 'active' : ''}`}
+                >
+                  التحضير الصباحي العام
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('assembly')}
+                  className={`sub-tab-btn ${activeSubTab === 'assembly' ? 'active' : ''}`}
+                >
+                  طابور الصباح
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('classes')}
+                  className={`sub-tab-btn ${activeSubTab === 'classes' ? 'active' : ''}`}
+                >
+                  تأخر وغياب الحصص
+                </button>
+              </div>
               
               <div className="table-container desktop-only-table">
                 <table>
                   <thead>
-                    <tr>
-                      <th>اسم المعلم</th>
-                      <th>التخصص</th>
-                      <th>الحالة اليومية</th>
-                      <th>وقت الحضور الفعلي</th>
-                      <th>مقدار التأخير</th>
-                      <th className="no-print">المراجعة والتأكيد</th>
-                    </tr>
+                    {activeSubTab === 'general' && (
+                      <tr>
+                        <th>اسم المعلم</th>
+                        <th>التخصص</th>
+                        <th>الحالة اليومية</th>
+                        <th>وقت الحضور الفعلي</th>
+                        <th>مقدار التأخير</th>
+                        <th className="no-print">المراجعة والتأكيد</th>
+                      </tr>
+                    )}
+                    {activeSubTab === 'assembly' && (
+                      <tr>
+                        <th>اسم المعلم</th>
+                        <th>التخصص</th>
+                        <th>حالة الطابور</th>
+                        <th>إدخال التأخر</th>
+                        <th>مقدار تأخير الطابور</th>
+                        <th className="no-print">المراجعة والتأكيد</th>
+                      </tr>
+                    )}
+                    {activeSubTab === 'classes' && (
+                      <tr>
+                        <th>اسم المعلم</th>
+                        <th>التخصص</th>
+                        <th>الحصص المتأخر/الغائب عنها</th>
+                        <th>إجراء</th>
+                        <th className="no-print">المراجعة والتأكيد</th>
+                      </tr>
+                    )}
                   </thead>
                   <tbody>
                     {filteredTeachers.length === 0 ? (
                       <tr>
-                        <td colSpan="6" style={{ textAlign: 'center', padding: '30px' }}>
+                        <td colSpan={activeSubTab === 'classes' ? "5" : "6"} style={{ textAlign: 'center', padding: '30px' }}>
                           لا يوجد معلمين مطابقين للبحث أو لم يتم تسجيل أي معلمين في النظام بعد.
                         </td>
                       </tr>
                     ) : (
                       filteredTeachers.map(teacher => {
-                        const record = attendance[teacher.id] || { status: 'present', check_in_time: '', delay_minutes: 0, isLate: false, locked: false };
+                        const record = attendance[teacher.id] || { status: 'present', check_in_time: '', delay_minutes: 0, isLate: false, locked: false, assembly_status: 'present', assembly_check_in_time: '', assembly_delay_minutes: 0, class_delays: [] };
                         const isTeacherVerified = !!verified[teacher.id];
+                        const isDisabled = isSubmitted || record.locked || record.status === 'absent' || record.status === 'excused';
 
                         return (
                           <tr key={teacher.id}>
                             <td className="teacher-name-cell">{teacher.name}</td>
                             <td>{teacher.extra_info?.specialty || '-'}</td>
-                            <td>
-                              {record.locked ? (
-                                <span className="badge-excused">[إجازة معتمدة مسبقاً]</span>
-                              ) : (
-                                <select
-                                  value={record.status}
-                                  onChange={(e) => handleStatusChange(teacher.id, e.target.value)}
-                                  disabled={isSubmitted}
-                                  className="table-select"
-                                >
-                                  <option value="present">حاضر</option>
-                                  <option value="absent">غياب بدون إذن</option>
-                                  <option value="emergency_pending">إجازة طارئة (انتظار الاعتماد)</option>
-                                </select>
-                              )}
-                            </td>
-                            <td>
-                              {record.status === 'present' && !record.locked ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                  <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button
-                                      type="button"
+                            
+                            {/* 1. تبويب التحضير العام */}
+                            {activeSubTab === 'general' && (
+                              <>
+                                <td>
+                                  {record.locked ? (
+                                    <span className="badge-excused">[إجازة معتمدة مسبقاً]</span>
+                                  ) : (
+                                    <select
+                                      value={record.status}
+                                      onChange={(e) => handleStatusChange(teacher.id, e.target.value)}
                                       disabled={isSubmitted}
-                                      onClick={() => handleLateToggle(teacher.id, false)}
-                                      className={`late-toggle-btn ${!record.isLate ? 'active-ontime' : ''}`}
+                                      className="table-select"
                                     >
-                                      ✓ في الموعد
-                                    </button>
-                                    <button
-                                      type="button"
-                                      disabled={isSubmitted}
-                                      onClick={() => handleLateToggle(teacher.id, true)}
-                                      className={`late-toggle-btn ${record.isLate ? 'active-late' : ''}`}
-                                    >
-                                      ⌛ متأخر
-                                    </button>
-                                  </div>
-                                  {record.isLate && (
-                                    <input
-                                      type="time"
-                                      value={record.check_in_time}
-                                      onChange={(e) => handleTimeChange(teacher.id, e.target.value)}
-                                      disabled={isSubmitted}
-                                      className="table-time-input"
-                                    />
+                                      <option value="present">حاضر</option>
+                                      <option value="absent">غياب بدون إذن</option>
+                                      <option value="emergency_pending">إجازة طارئة (انتظار الاعتماد)</option>
+                                    </select>
                                   )}
-                                </div>
-                              ) : (
-                                <span style={{ color: '#aaa' }}>-</span>
-                              )}
-                            </td>
-                            <td>
-                              {record.status === 'present' && record.delay_minutes > 0 ? (
-                                <span className="delay-badge">
-                                  {formatMinutesToHoursAndMinutes(record.delay_minutes)} تأخير
-                                </span>
-                              ) : record.status === 'present' ? (
-                                <span className="ontime-badge">في الموعد</span>
-                              ) : (
-                                <span style={{ color: '#aaa' }}>-</span>
-                              )}
-                            </td>
+                                </td>
+                                <td>
+                                  {record.status === 'present' && !record.locked ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                      <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                          type="button"
+                                          disabled={isSubmitted}
+                                          onClick={() => handleLateToggle(teacher.id, false)}
+                                          className={`late-toggle-btn ${!record.isLate ? 'active-ontime' : ''}`}
+                                        >
+                                          ✓ في الموعد
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={isSubmitted}
+                                          onClick={() => handleLateToggle(teacher.id, true)}
+                                          className={`late-toggle-btn ${record.isLate ? 'active-late' : ''}`}
+                                        >
+                                          ⌛ متأخر
+                                        </button>
+                                      </div>
+                                      {record.isLate && (
+                                        <input
+                                          type="time"
+                                          value={record.check_in_time}
+                                          onChange={(e) => handleTimeChange(teacher.id, e.target.value)}
+                                          disabled={isSubmitted}
+                                          className="table-time-input"
+                                        />
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: '#aaa' }}>-</span>
+                                  )}
+                                </td>
+                                <td>
+                                  {record.status === 'present' && record.delay_minutes > 0 ? (
+                                    <span className="delay-badge">
+                                      {formatMinutesToHoursAndMinutes(record.delay_minutes)} تأخير
+                                    </span>
+                                  ) : record.status === 'present' ? (
+                                    <span className="ontime-badge">في الموعد</span>
+                                  ) : (
+                                    <span style={{ color: '#aaa' }}>-</span>
+                                  )}
+                                </td>
+                              </>
+                            )}
+
+                            {/* 2. تبويب طابور الصباح */}
+                            {activeSubTab === 'assembly' && (
+                              <>
+                                <td>
+                                  <select
+                                    value={record.status !== 'present' ? 'absent' : (record.assembly_status || 'present')}
+                                    onChange={(e) => handleAssemblyStatusChange(teacher.id, e.target.value)}
+                                    disabled={isDisabled}
+                                    className="table-select"
+                                  >
+                                    <option value="present">✓ حضر في الموعد</option>
+                                    <option value="late">⌛ متأخر عن الطابور</option>
+                                    <option value="absent">❌ غاب عن الطابور</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  {record.status === 'present' && record.assembly_status === 'late' && !record.locked ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                      <select
+                                        value={record.assembly_entry_mode || 'minutes'}
+                                        onChange={(e) => handleAssemblyEntryModeChange(teacher.id, e.target.value)}
+                                        disabled={isSubmitted}
+                                        className="table-select"
+                                        style={{ padding: '4px 8px', fontSize: '12px' }}
+                                      >
+                                        <option value="minutes">إدخال الدقائق مباشرة</option>
+                                        <option value="time">إدخال وقت الحضور</option>
+                                      </select>
+                                      {record.assembly_entry_mode === 'time' ? (
+                                        <input
+                                          type="time"
+                                          value={record.assembly_check_in_time || '06:30'}
+                                          onChange={(e) => handleAssemblyTimeChange(teacher.id, e.target.value)}
+                                          disabled={isSubmitted}
+                                          className="table-time-input"
+                                        />
+                                      ) : (
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          placeholder="الدقائق"
+                                          value={record.assembly_delay_minutes || ''}
+                                          onChange={(e) => handleAssemblyMinutesChange(teacher.id, e.target.value)}
+                                          disabled={isSubmitted}
+                                          className="table-time-input"
+                                          style={{ padding: '4px 8px' }}
+                                        />
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: '#aaa' }}>-</span>
+                                  )}
+                                </td>
+                                <td>
+                                  {record.status !== 'present' ? (
+                                    <span style={{ color: '#aaa' }}>-</span>
+                                  ) : record.assembly_status === 'late' && record.assembly_delay_minutes > 0 ? (
+                                    <span className="delay-badge">
+                                      {formatMinutesToHoursAndMinutes(record.assembly_delay_minutes)} تأخير
+                                    </span>
+                                  ) : record.assembly_status === 'absent' ? (
+                                    <span className="class-absent-badge">غائب عن الطابور</span>
+                                  ) : (
+                                    <span className="ontime-badge">في الموعد</span>
+                                  )}
+                                </td>
+                              </>
+                            )}
+
+                            {/* 3. تبويب تأخر وغياب الحصص */}
+                            {activeSubTab === 'classes' && (
+                              <>
+                                <td>
+                                  {record.status !== 'present' ? (
+                                    <span style={{ color: '#aaa' }}>-</span>
+                                  ) : (!record.class_delays || record.class_delays.length === 0) ? (
+                                    <span className="ontime-badge">ملتزم بالحصص</span>
+                                  ) : (
+                                    <div className="class-delays-summary-list">
+                                      {record.class_delays.map((cd, index) => (
+                                        <div key={index} className={`class-delay-summary-item ${cd.status}`}>
+                                          <span>الحصة {cd.class_number}:</span>
+                                          {cd.status === 'late' ? (
+                                            <span className="delay-minutes-badge">متأخر {cd.delay_minutes} د</span>
+                                          ) : (
+                                            <span className="class-absent-badge">غياب</span>
+                                          )}
+                                          {cd.notes && <span style={{ fontSize: '11px', color: '#666', marginRight: '5px' }}>({cd.notes})</span>}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </td>
+                                <td>
+                                  {record.status === 'present' && !record.locked ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => openClassDelaysModal(teacher)}
+                                      disabled={isSubmitted}
+                                      className="btn btn-secondary"
+                                      style={{ padding: '4px 10px', fontSize: '13px' }}
+                                    >
+                                      📝 تسجيل الحصص
+                                    </button>
+                                  ) : (
+                                    <span style={{ color: '#aaa' }}>-</span>
+                                  )}
+                                </td>
+                              </>
+                            )}
+
                             <td className="no-print">
                               <button
                                 type="button"
@@ -508,8 +809,9 @@ export default function EmployeeAttendancePage() {
                   </div>
                 ) : (
                   filteredTeachers.map(teacher => {
-                    const record = attendance[teacher.id] || { status: 'present', check_in_time: '', delay_minutes: 0, isLate: false, locked: false };
+                    const record = attendance[teacher.id] || { status: 'present', check_in_time: '', delay_minutes: 0, isLate: false, locked: false, assembly_status: 'present', assembly_check_in_time: '', assembly_delay_minutes: 0, class_delays: [] };
                     const isTeacherVerified = !!verified[teacher.id];
+                    const isDisabled = isSubmitted || record.locked || record.status === 'absent' || record.status === 'excused';
 
                     return (
                       <div key={teacher.id} className={`teacher-mobile-card ${isTeacherVerified ? 'card-verified' : ''}`}>
@@ -529,79 +831,201 @@ export default function EmployeeAttendancePage() {
                         </div>
 
                         <div className="card-body-mobile">
-                          {/* الحالة اليومية */}
-                          <div className="card-field-mobile">
-                            <span className="field-label-mobile">الحالة:</span>
-                            {record.locked ? (
-                              <span className="badge-excused" style={{ fontSize: '12px' }}>[إجازة معتمدة]</span>
-                            ) : (
-                              <select
-                                value={record.status}
-                                onChange={(e) => handleStatusChange(teacher.id, e.target.value)}
-                                disabled={isSubmitted}
-                                className="form-select-mobile"
-                              >
-                                <option value="present">حاضر</option>
-                                <option value="absent">غياب بدون إذن</option>
-                                <option value="emergency_pending">إجازة طارئة</option>
-                              </select>
-                            )}
-                          </div>
-
-                          {/* زر في الموعد / متأخر */}
-                          {record.status === 'present' && !record.locked && (
-                            <div className="card-field-mobile">
-                              <span className="field-label-mobile">التوقيت:</span>
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                <button
-                                  type="button"
-                                  disabled={isSubmitted}
-                                  onClick={() => handleLateToggle(teacher.id, false)}
-                                  className={`late-toggle-btn ${!record.isLate ? 'active-ontime' : ''}`}
-                                  style={{ fontSize: '12px', padding: '4px 8px' }}
-                                >
-                                  ✓ في الموعد
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={isSubmitted}
-                                  onClick={() => handleLateToggle(teacher.id, true)}
-                                  className={`late-toggle-btn ${record.isLate ? 'active-late' : ''}`}
-                                  style={{ fontSize: '12px', padding: '4px 8px' }}
-                                >
-                                  ⌛ متأخر
-                                </button>
+                          {/* 1. التحضير العام في الموبايل */}
+                          {activeSubTab === 'general' && (
+                            <>
+                              {/* الحالة اليومية */}
+                              <div className="card-field-mobile">
+                                <span className="field-label-mobile">الحالة:</span>
+                                {record.locked ? (
+                                  <span className="badge-excused" style={{ fontSize: '12px' }}>[إجازة معتمدة]</span>
+                                ) : (
+                                  <select
+                                    value={record.status}
+                                    onChange={(e) => handleStatusChange(teacher.id, e.target.value)}
+                                    disabled={isSubmitted}
+                                    className="form-select-mobile"
+                                  >
+                                    <option value="present">حاضر</option>
+                                    <option value="absent">غياب بدون إذن</option>
+                                    <option value="emergency_pending">إجازة طارئة</option>
+                                  </select>
+                                )}
                               </div>
-                            </div>
+
+                              {/* زر في الموعد / متأخر */}
+                              {record.status === 'present' && !record.locked && (
+                                <div className="card-field-mobile">
+                                  <span className="field-label-mobile">التوقيت:</span>
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button
+                                      type="button"
+                                      disabled={isSubmitted}
+                                      onClick={() => handleLateToggle(teacher.id, false)}
+                                      className={`late-toggle-btn ${!record.isLate ? 'active-ontime' : ''}`}
+                                      style={{ fontSize: '12px', padding: '4px 8px' }}
+                                    >
+                                      ✓ في الموعد
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={isSubmitted}
+                                      onClick={() => handleLateToggle(teacher.id, true)}
+                                      className={`late-toggle-btn ${record.isLate ? 'active-late' : ''}`}
+                                      style={{ fontSize: '12px', padding: '4px 8px' }}
+                                    >
+                                      ⌛ متأخر
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* حقل الوقت عند التأخير */}
+                              {record.status === 'present' && !record.locked && record.isLate && (
+                                <div className="card-field-mobile">
+                                  <span className="field-label-mobile">وقت الحضور:</span>
+                                  <input
+                                    type="time"
+                                    value={record.check_in_time}
+                                    onChange={(e) => handleTimeChange(teacher.id, e.target.value)}
+                                    disabled={isSubmitted}
+                                    className="form-time-input-mobile"
+                                  />
+                                </div>
+                              )}
+
+                              {/* مقدار التأخير */}
+                              <div className="card-field-mobile" style={{ border: 'none', paddingBottom: 0 }}>
+                                <span className="field-label-mobile">التأخير:</span>
+                                {record.status === 'present' && record.delay_minutes > 0 ? (
+                                  <span className="delay-badge" style={{ fontSize: '12px' }}>
+                                    {formatMinutesToHoursAndMinutes(record.delay_minutes)} تأخير
+                                  </span>
+                                ) : record.status === 'present' ? (
+                                  <span className="ontime-badge" style={{ fontSize: '12px' }}>في الموعد</span>
+                                ) : (
+                                  <span style={{ color: '#aaa' }}>-</span>
+                                )}
+                              </div>
+                            </>
                           )}
 
-                          {/* حقل الوقت عند التأخير */}
-                          {record.status === 'present' && !record.locked && record.isLate && (
-                            <div className="card-field-mobile">
-                              <span className="field-label-mobile">وقت الحضور:</span>
-                              <input
-                                type="time"
-                                value={record.check_in_time}
-                                onChange={(e) => handleTimeChange(teacher.id, e.target.value)}
-                                disabled={isSubmitted}
-                                className="form-time-input-mobile"
-                              />
-                            </div>
+                          {/* 2. طابور الصباح في الموبايل */}
+                          {activeSubTab === 'assembly' && (
+                            <>
+                              <div className="card-field-mobile">
+                                <span className="field-label-mobile">حالة الطابور:</span>
+                                <select
+                                  value={record.status !== 'present' ? 'absent' : (record.assembly_status || 'present')}
+                                  onChange={(e) => handleAssemblyStatusChange(teacher.id, e.target.value)}
+                                  disabled={isDisabled}
+                                  className="form-select-mobile"
+                                >
+                                  <option value="present">✓ حضر</option>
+                                  <option value="late">⌛ متأخر</option>
+                                  <option value="absent">❌ غائب</option>
+                                </select>
+                              </div>
+
+                              {record.status === 'present' && record.assembly_status === 'late' && !record.locked && (
+                                <>
+                                  <div className="card-field-mobile">
+                                    <span className="field-label-mobile">طريقة الحساب:</span>
+                                    <select
+                                      value={record.assembly_entry_mode || 'minutes'}
+                                      onChange={(e) => handleAssemblyEntryModeChange(teacher.id, e.target.value)}
+                                      disabled={isSubmitted}
+                                      className="form-select-mobile"
+                                    >
+                                      <option value="minutes">دقائق مباشرة</option>
+                                      <option value="time">وقت الحضور</option>
+                                    </select>
+                                  </div>
+                                  <div className="card-field-mobile">
+                                    <span className="field-label-mobile">قيمة التأخير:</span>
+                                    {record.assembly_entry_mode === 'time' ? (
+                                      <input
+                                        type="time"
+                                        value={record.assembly_check_in_time || '06:30'}
+                                        onChange={(e) => handleAssemblyTimeChange(teacher.id, e.target.value)}
+                                        disabled={isSubmitted}
+                                        className="form-time-input-mobile"
+                                      />
+                                    ) : (
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        placeholder="الدقائق"
+                                        value={record.assembly_delay_minutes || ''}
+                                        onChange={(e) => handleAssemblyMinutesChange(teacher.id, e.target.value)}
+                                        disabled={isSubmitted}
+                                        className="form-time-input-mobile"
+                                        style={{ width: '80px' }}
+                                      />
+                                    )}
+                                  </div>
+                                </>
+                              )}
+
+                              <div className="card-field-mobile" style={{ border: 'none', paddingBottom: 0 }}>
+                                <span className="field-label-mobile">تأخير الطابور:</span>
+                                {record.status !== 'present' ? (
+                                  <span style={{ color: '#aaa' }}>-</span>
+                                ) : record.assembly_status === 'late' && record.assembly_delay_minutes > 0 ? (
+                                  <span className="delay-badge" style={{ fontSize: '12px' }}>
+                                    {formatMinutesToHoursAndMinutes(record.assembly_delay_minutes)} تأخير
+                                  </span>
+                                ) : record.assembly_status === 'absent' ? (
+                                  <span className="class-absent-badge" style={{ fontSize: '12px' }}>غائب عن الطابور</span>
+                                ) : (
+                                  <span className="ontime-badge" style={{ fontSize: '12px' }}>في الموعد</span>
+                                )}
+                              </div>
+                            </>
                           )}
 
-                          {/* مقدار التأخير */}
-                          <div className="card-field-mobile" style={{ border: 'none', paddingBottom: 0 }}>
-                            <span className="field-label-mobile">التأخير:</span>
-                            {record.status === 'present' && record.delay_minutes > 0 ? (
-                              <span className="delay-badge" style={{ fontSize: '12px' }}>
-                                {formatMinutesToHoursAndMinutes(record.delay_minutes)} تأخير
-                              </span>
-                            ) : record.status === 'present' ? (
-                              <span className="ontime-badge" style={{ fontSize: '12px' }}>في الموعد</span>
-                            ) : (
-                              <span style={{ color: '#aaa' }}>-</span>
-                            )}
-                          </div>
+                          {/* 3. تأخر وغياب الحصص في الموبايل */}
+                          {activeSubTab === 'classes' && (
+                            <>
+                              <div className="card-field-mobile" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                                <span className="field-label-mobile">الحصص المسجلة:</span>
+                                {record.status !== 'present' ? (
+                                  <span style={{ color: '#aaa' }}>-</span>
+                                ) : (!record.class_delays || record.class_delays.length === 0) ? (
+                                  <span className="ontime-badge" style={{ alignSelf: 'flex-start', fontSize: '12px' }}>ملتزم بالحصص</span>
+                                ) : (
+                                  <div className="class-delays-summary-list" style={{ width: '100%' }}>
+                                    {record.class_delays.map((cd, index) => (
+                                      <div key={index} className={`class-delay-summary-item ${cd.status}`}>
+                                        <span>الحصة {cd.class_number}:</span>
+                                        {cd.status === 'late' ? (
+                                          <span className="delay-minutes-badge">متأخر {cd.delay_minutes} د</span>
+                                        ) : (
+                                          <span className="class-absent-badge">غياب</span>
+                                        )}
+                                        {cd.notes && <span style={{ fontSize: '11px', color: '#666', marginRight: '5px' }}>({cd.notes})</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {record.status === 'present' && !record.locked && (
+                                <div className="card-field-mobile" style={{ border: 'none', paddingBottom: 0 }}>
+                                  <span className="field-label-mobile">الإجراء:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => openClassDelaysModal(teacher)}
+                                    disabled={isSubmitted}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '6px 12px', fontSize: '12px' }}
+                                  >
+                                    📝 تسجيل الحصص
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     );
@@ -661,16 +1085,156 @@ export default function EmployeeAttendancePage() {
                 </div>
 
                 {correctionStatus === 'present' && (
-                  <div className="form-group">
-                    <label className="form-label">وقت الحضور الفعلي الجديد</label>
-                    <input 
-                      type="time" 
-                      value={correctionTime} 
-                      onChange={(e) => setCorrectionTime(e.target.value)} 
-                      required 
-                      className="form-input" 
-                    />
-                  </div>
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">وقت الحضور الفعلي الجديد</label>
+                      <input 
+                        type="time" 
+                        value={correctionTime} 
+                        onChange={(e) => setCorrectionTime(e.target.value)} 
+                        required 
+                        className="form-input" 
+                      />
+                    </div>
+
+                    <div style={{ padding: '15px', backgroundColor: '#f8fafc', border: '1px solid var(--border-gray)', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                      <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--primary-navy)', borderBottom: '1px dashed #ccc', paddingBottom: '5px' }}>تصحيح طابور الصباح والحصص:</h3>
+                      
+                      {/* تصحيح الطابور */}
+                      <div className="form-group">
+                        <label className="form-label">حالة الطابور المطلوبة</label>
+                        <select
+                          value={correctionAssemblyStatus}
+                          onChange={(e) => setCorrectionAssemblyStatus(e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="present">حضر في الموعد</option>
+                          <option value="late">متأخر عن الطابور</option>
+                          <option value="absent">غائب عن الطابور</option>
+                        </select>
+                      </div>
+
+                      {correctionAssemblyStatus === 'late' && (
+                        <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <label className="form-label">طريقة تصحيح تأخير الطابور</label>
+                          <select
+                            value={correctionAssemblyEntryMode}
+                            onChange={(e) => setCorrectionAssemblyEntryMode(e.target.value)}
+                            className="form-select"
+                          >
+                            <option value="minutes">دقائق مباشرة</option>
+                            <option value="time">وقت الحضور الفعلي للطابور</option>
+                          </select>
+
+                          {correctionAssemblyEntryMode === 'time' ? (
+                            <div>
+                              <label className="form-label">وقت حضور الطابور الفعلي الجديد</label>
+                              <input
+                                type="time"
+                                value={correctionAssemblyTime}
+                                onChange={(e) => setCorrectionAssemblyTime(e.target.value)}
+                                className="form-input"
+                                required
+                              />
+                            </div>
+                          ) : (
+                            <div>
+                              <label className="form-label">عدد دقائق التأخير المطلوبة</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={correctionAssemblyDelayMinutes}
+                                onChange={(e) => setCorrectionAssemblyDelayMinutes(parseInt(e.target.value) || 0)}
+                                className="form-input"
+                                required
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* تصحيح الحصص */}
+                      <div style={{ marginTop: '10px' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>إجراءات الحصص المطلوب تصحيحها:</label>
+                        {correctionClassDelays.length === 0 ? (
+                          <p style={{ fontSize: '12px', color: '#666', fontStyle: 'italic', marginBottom: '8px' }}>لا توجد تعديلات حصص مضافة.</p>
+                        ) : (
+                          correctionClassDelays.map((cd, index) => (
+                            <div key={index} className="class-delay-entry-row" style={{ backgroundColor: '#fff', border: '1px solid #cbd5e1', padding: '8px', marginBottom: '8px' }}>
+                              <select
+                                value={cd.class_number}
+                                onChange={(e) => {
+                                  const updated = [...correctionClassDelays];
+                                  updated[index].class_number = parseInt(e.target.value);
+                                  setCorrectionClassDelays(updated);
+                                }}
+                                className="form-select"
+                                style={{ padding: '4px', fontSize: '12px' }}
+                              >
+                                {[1,2,3,4,5,6,7].map(num => (
+                                  <option key={num} value={num}>الحصة {num}</option>
+                                ))}
+                              </select>
+                              <select
+                                value={cd.status}
+                                onChange={(e) => {
+                                  const updated = [...correctionClassDelays];
+                                  updated[index].status = e.target.value;
+                                  setCorrectionClassDelays(updated);
+                                }}
+                                className="form-select"
+                                style={{ padding: '4px', fontSize: '12px' }}
+                              >
+                                <option value="late">تأخر</option>
+                                <option value="absent">غياب</option>
+                              </select>
+                              <input
+                                type="number"
+                                min="1"
+                                disabled={cd.status === 'absent'}
+                                value={cd.status === 'absent' ? '' : cd.delay_minutes}
+                                onChange={(e) => {
+                                  const updated = [...correctionClassDelays];
+                                  updated[index].delay_minutes = parseInt(e.target.value) || 0;
+                                  setCorrectionClassDelays(updated);
+                                }}
+                                placeholder="الدقائق"
+                                className="form-input"
+                                style={{ padding: '4px', fontSize: '12px' }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setCorrectionClassDelays(correctionClassDelays.filter((_, i) => i !== index))}
+                                className="btn-remove-row"
+                              >
+                                🗑️
+                              </button>
+                              <input
+                                type="text"
+                                value={cd.notes || ''}
+                                onChange={(e) => {
+                                  const updated = [...correctionClassDelays];
+                                  updated[index].notes = e.target.value;
+                                  setCorrectionClassDelays(updated);
+                                }}
+                                placeholder="ملاحظات الحصة..."
+                                className="class-notes-input"
+                                style={{ gridColumn: 'span 4' }}
+                              />
+                            </div>
+                          ))
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setCorrectionClassDelays([...correctionClassDelays, { class_number: 1, status: 'late', delay_minutes: 5, notes: '' }])}
+                          className="btn-add-class-action"
+                          style={{ fontSize: '12px', padding: '6px' }}
+                        >
+                          ➕ إضافة حصة للتصحيح
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 <div className="form-group">
@@ -778,6 +1342,112 @@ export default function EmployeeAttendancePage() {
                 style={{ padding: '6px 15px', fontSize: '14px' }}
               >
                 {modalConfig.type === 'warning' ? 'نعم، هم حاضرون (متابعة)' : 'موافق، إرسال وتأكيد'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* مودال إدخال تأخير وغياب الحصص الديناميكي */}
+      {activeClassModalTeacher && (
+        <div className="modal-overlay-class no-print">
+          <div className="modal-content-class">
+            <h3 className="custom-modal-title" style={{ marginBottom: '15px' }}>
+              تسجيل الحصص للمعلم: {activeClassModalTeacher.name}
+            </h3>
+            
+            <div style={{ marginBottom: '15px' }}>
+              {modalClassDelays.length === 0 ? (
+                <p style={{ color: '#666', textAlign: 'center', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px dashed #ccc' }}>
+                  لا يوجد أي تأخير أو غياب مسجل للحصص اليوم لهذا المعلم.
+                </p>
+              ) : (
+                modalClassDelays.map((cd, index) => (
+                  <div key={index} className="class-delay-entry-row">
+                    <div>
+                      <label style={{ fontSize: '12px', display: 'block', color: 'var(--text-light)', marginBottom: '4px' }}>رقم الحصة</label>
+                      <select
+                        value={cd.class_number}
+                        onChange={(e) => updateClassDelayRow(index, 'class_number', parseInt(e.target.value))}
+                        className="form-select"
+                        style={{ padding: '6px', fontSize: '13px' }}
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7].map(num => (
+                          <option key={num} value={num}>الحصة {num}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', display: 'block', color: 'var(--text-light)', marginBottom: '4px' }}>نوع الإجراء</label>
+                      <select
+                        value={cd.status}
+                        onChange={(e) => updateClassDelayRow(index, 'status', e.target.value)}
+                        className="form-select"
+                        style={{ padding: '6px', fontSize: '13px' }}
+                      >
+                        <option value="late">⌛ تأخر عن الحصة</option>
+                        <option value="absent">❌ غياب عن الحصة</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', display: 'block', color: 'var(--text-light)', marginBottom: '4px' }}>دقائق التأخير</label>
+                      <input
+                        type="number"
+                        min="1"
+                        disabled={cd.status === 'absent'}
+                        value={cd.status === 'absent' ? '' : cd.delay_minutes}
+                        onChange={(e) => updateClassDelayRow(index, 'delay_minutes', parseInt(e.target.value) || 0)}
+                        className="form-input"
+                        placeholder="الدقائق"
+                        style={{ padding: '6px', fontSize: '13px' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => removeClassDelayRow(index)}
+                        className="btn-remove-row"
+                        title="حذف هذا الإجراء"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={cd.notes || ''}
+                      onChange={(e) => updateClassDelayRow(index, 'notes', e.target.value)}
+                      placeholder="تفاصيل إضافية / ملاحظات (اختياري)..."
+                      className="class-notes-input"
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <button
+              type="button"
+              onClick={addClassDelayRow}
+              className="btn-add-class-action"
+            >
+              ➕ إضافة إجراء حصة جديد
+            </button>
+            
+            <div className="custom-modal-actions" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+              <button
+                type="button"
+                onClick={() => setActiveClassModalTeacher(null)}
+                className="btn btn-secondary"
+                style={{ padding: '6px 15px', fontSize: '14px' }}
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={saveClassDelaysModal}
+                className="btn btn-navy"
+                style={{ padding: '6px 15px', fontSize: '14px' }}
+              >
+                حفظ الحصص
               </button>
             </div>
           </div>

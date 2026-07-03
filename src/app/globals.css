@@ -452,13 +452,10 @@ tr:hover {
     display: flex !important;
     justify-content: space-between;
     align-items: flex-end;
-    margin-top: 80px;
-    position: fixed;
-    bottom: 30px;
+    margin-top: 60px;
     width: 100%;
-    left: 0;
-    right: 0;
     padding: 0 50px;
+    page-break-inside: avoid;
   }
 
   .print-sig-col {
@@ -1309,4 +1306,194 @@ lord-icon {
     padding: 12px 10px !important;
   }
 }
+
+/* =============================================================
+   تنسيقات تبويبات التحضير الفرعية وتأخير الحصص/الطابور الجديدة
+   ============================================================= */
+
+.sub-tabs-container {
+  display: flex;
+  gap: 10px;
+  background-color: var(--white);
+  padding: 10px 15px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-gray);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+
+.sub-tab-btn {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-light);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sub-tab-btn:hover {
+  background-color: var(--light-gray);
+  color: var(--text-dark);
+}
+
+.sub-tab-btn.active {
+  background-color: var(--primary-navy);
+  color: var(--white);
+}
+
+/* بطاقات وقوائم تأخير الحصص */
+.class-delays-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+}
+
+.class-delay-summary-item {
+  background-color: #f8fafc;
+  border: 1px solid var(--border-gray);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: right;
+}
+
+.class-delay-summary-item.late {
+  border-right: 3px solid var(--accent-gold);
+}
+
+.class-delay-summary-item.absent {
+  border-right: 3px solid #EF4444;
+}
+
+/* نافذة إدخال تأخير الحصص المنبثقة */
+.modal-overlay-class {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content-class {
+  background-color: var(--white);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  width: 90%;
+  max-width: 550px;
+  padding: 25px;
+  border-top: 5px solid var(--primary-navy);
+  animation: modalSlideUp 0.3s ease-out;
+  max-height: 85vh;
+  overflow-y: auto;
+  direction: rtl;
+}
+
+.class-delay-entry-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 0.3fr;
+  gap: 10px;
+  align-items: center;
+  background-color: #f8fafc;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-gray);
+  margin-bottom: 10px;
+}
+
+@media (max-width: 576px) {
+  .class-delay-entry-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+}
+
+.btn-remove-row {
+  background: none;
+  border: none;
+  color: #EF4444;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.btn-remove-row:hover {
+  background-color: #fee2e2;
+}
+
+.btn-add-class-action {
+  width: 100%;
+  border: 1.5px dashed var(--accent-blue);
+  background-color: rgba(61, 126, 185, 0.05);
+  color: var(--accent-blue);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-add-class-action:hover {
+  background-color: rgba(61, 126, 185, 0.1);
+}
+
+.class-notes-input {
+  grid-column: span 4;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-gray);
+}
+
+@media (max-width: 576px) {
+  .class-notes-input {
+    grid-column: span 1;
+  }
+}
+
+.delay-minutes-badge {
+  background-color: #FEE2E2;
+  color: #9B1C1C;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.class-absent-badge {
+  background-color: #FDE8E8;
+  color: #EF4444;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+
+
 

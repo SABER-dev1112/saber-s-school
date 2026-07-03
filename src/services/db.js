@@ -7,6 +7,7 @@ const INITIAL_SETTINGS = {
   school_name: 'مدرسة أبي دجانه المتوسطه',
   manager_name: 'الأستاذ صابر',
   start_time: '06:50',
+  assembly_start_time: '06:30',
   shift_duration: 7,
   header_metadata: {
     city: 'مكة المكرمة',
@@ -377,7 +378,7 @@ export const db = {
     }
   },
 
-  async submitCorrection(teacherId, teacherName, date, status, checkInTime, delayMinutes, reason) {
+  async submitCorrection(teacherId, teacherName, date, status, checkInTime, delayMinutes, assemblyStatus, assemblyCheckInTime, assemblyDelayMinutes, classDelays, reason) {
     const correctionData = {
       id: 'corr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
       teacher_id: teacherId,
@@ -386,6 +387,10 @@ export const db = {
       status,
       check_in_time: checkInTime,
       delay_minutes: delayMinutes || 0,
+      assembly_status: assemblyStatus || 'present',
+      assembly_check_in_time: assemblyCheckInTime || null,
+      assembly_delay_minutes: assemblyDelayMinutes || 0,
+      class_delays: classDelays || [],
       reason,
       request_status: 'pending',
       created_at: new Date().toISOString()
@@ -429,7 +434,11 @@ export const db = {
             date: data.date,
             status: data.status,
             check_in_time: data.check_in_time,
-            delay_minutes: data.delay_minutes
+            delay_minutes: data.delay_minutes,
+            assembly_status: data.assembly_status,
+            assembly_check_in_time: data.assembly_check_in_time,
+            assembly_delay_minutes: data.assembly_delay_minutes,
+            class_delays: data.class_delays
           }]);
         }
         return data;
@@ -455,7 +464,11 @@ export const db = {
           date: corr.date,
           status: corr.status,
           check_in_time: corr.status === 'present' ? corr.check_in_time : null,
-          delay_minutes: corr.delay_minutes
+          delay_minutes: corr.delay_minutes,
+          assembly_status: corr.assembly_status,
+          assembly_check_in_time: corr.assembly_check_in_time,
+          assembly_delay_minutes: corr.assembly_delay_minutes,
+          class_delays: corr.class_delays
         }]);
       }
       setLocalData('corrections', corrections);

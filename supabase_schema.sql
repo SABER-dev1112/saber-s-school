@@ -9,6 +9,7 @@ create table if not exists public.school_settings (
   school_name text not null default 'مدرسة أبي دجانه المتوسطه',
   manager_name text not null default 'الأستاذ صابر',
   start_time time not null default '07:00',
+  assembly_start_time time not null default '06:30',
   shift_duration integer not null default 7,
   header_metadata jsonb not null default '{"city": "مكة المكرمة", "semester": "الفصل الدراسي الثاني", "domain": "التعليم العام"}'::jsonb,
   official_holidays jsonb not null default '[]'::jsonb,
@@ -32,6 +33,10 @@ create table if not exists public.attendance (
   status text not null check (status in ('present', 'absent', 'excused', 'emergency_pending', 'emergency_approved')),
   check_in_time time,
   delay_minutes integer default 0,
+  assembly_status text default 'present' check (assembly_status in ('present', 'late', 'absent')),
+  assembly_check_in_time time,
+  assembly_delay_minutes integer default 0,
+  class_delays jsonb default '[]'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   constraint unique_teacher_date unique (teacher_id, date)
 );
@@ -56,6 +61,10 @@ create table if not exists public.attendance_corrections (
   status text not null check (status in ('present', 'absent', 'excused')),
   check_in_time time,
   delay_minutes integer default 0,
+  assembly_status text default 'present' check (assembly_status in ('present', 'late', 'absent')),
+  assembly_check_in_time time,
+  assembly_delay_minutes integer default 0,
+  class_delays jsonb default '[]'::jsonb,
   reason text not null,
   request_status text not null default 'pending' check (request_status in ('pending', 'approved', 'rejected')),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -122,8 +131,8 @@ create or replace trigger on_auth_user_created
 --  إدخال البيانات الافتراضية الأولية (Settings & Seed Data)
 -- =========================================================================
 
-insert into public.school_settings (id, school_name, manager_name, start_time, shift_duration, header_metadata, official_holidays, custom_fields)
-values (1, 'مدرسة أبي دجانه المتوسطه', 'الأستاذ صابر', '07:00', 7, '{"city": "مكة المكرمة", "semester": "الفصل الدراسي الثاني", "domain": "التعليم العام"}'::jsonb, '[]'::jsonb, '[]'::jsonb)
+insert into public.school_settings (id, school_name, manager_name, start_time, assembly_start_time, shift_duration, header_metadata, official_holidays, custom_fields)
+values (1, 'مدرسة أبي دجانه المتوسطه', 'الأستاذ صابر', '07:00', '06:30', 7, '{"city": "مكة المكرمة", "semester": "الفصل الدراسي الثاني", "domain": "التعليم العام"}'::jsonb, '[]'::jsonb, '[]'::jsonb)
 on conflict (id) do nothing;
 
 -- تم إزالة المعلمين الافتراضيين لتبدأ قاعدة البيانات نظيفة تماماً. ويمكن للمدير إضافة معلمين من لوحة التحكم.
