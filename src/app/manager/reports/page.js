@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import OfficialHeader from '../../../components/layout/OfficialHeader';
 import OfficialFooter from '../../../components/layout/OfficialFooter';
+import LoadingOverlay from '../../../components/common/LoadingOverlay';
 import HijriDatePicker from '../../../components/common/HijriDatePicker';
 import { gregorianToHijriLong } from '../../../core/calendar';
 import { formatMinutesToHoursAndMinutes } from '../../../core/lateness';
@@ -28,6 +29,7 @@ export default function ManagerReportsPage() {
   const [summaryData, setSummaryData] = useState([]);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // خيارات تخصيص كروت الإحصائيات (عرض/إخفاء)
   const [showTotalTeachers, setShowTotalTeachers] = useState(true);
@@ -55,6 +57,7 @@ export default function ManagerReportsPage() {
 
   useEffect(() => {
     if (!authorized) return;
+    setLoading(true);
     Promise.all([
       db.getTeachers(),
       db.getSettings()
@@ -64,6 +67,10 @@ export default function ManagerReportsPage() {
       if (teachersData.length > 0) {
         setSelectedTeacherId(teachersData[0].id);
       }
+    }).catch(err => {
+      console.error(err);
+    }).finally(() => {
+      setLoading(false);
     });
   }, [authorized]);
 
@@ -306,8 +313,8 @@ export default function ManagerReportsPage() {
     }
   };
 
-  if (!authorized) {
-    return <div className="loading-screen">جاري التحقق من الصلاحيات...</div>;
+  if (!authorized || loading) {
+    return <LoadingOverlay message={!authorized ? "جاري التحقق من الصلاحيات..." : "جاري تحميل سجلات التقارير..."} />;
   }
 
   const startDateHijri = gregorianToHijriLong(startDate);

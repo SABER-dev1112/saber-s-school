@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import OfficialHeader from '../../components/layout/OfficialHeader';
 import OfficialFooter from '../../components/layout/OfficialFooter';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
 import checkSuspiciousAbsence from '../../core/validation';
 import db from '../../services/db';
 
@@ -203,8 +204,8 @@ export default function ManagerDashboard() {
     }
   };
 
-  if (!authorized) {
-    return <div className="loading-screen">جاري التحقق من الصلاحيات...</div>;
+  if (!authorized || loading) {
+    return <LoadingOverlay message={!authorized ? "جاري التحقق من الصلاحيات..." : "جاري تحميل سجلات حضور المعلمين..."} />;
   }
 
   return (

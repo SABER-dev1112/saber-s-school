@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import OfficialHeader from '../../../components/layout/OfficialHeader';
 import OfficialFooter from '../../../components/layout/OfficialFooter';
+import LoadingOverlay from '../../../components/common/LoadingOverlay';
 import db from '../../../services/db';
 
 export default function EmployeePasswordPage() {
@@ -57,7 +58,7 @@ export default function EmployeePasswordPage() {
   };
 
   if (!authorized) {
-    return <div className="loading-screen">جاري التحقق من الصلاحيات...</div>;
+    return <LoadingOverlay message="جاري التحقق من الصلاحيات..." />;
   }
 
   return (

@@ -471,6 +471,7 @@ tr:hover {
     border: 1.5px solid #000 !important;
     width: 100% !important;
     border-collapse: collapse !important;
+    table-layout: fixed !important;
   }
   
   th {
@@ -479,11 +480,16 @@ tr:hover {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     border: 1px solid #000 !important;
+    font-size: 10pt !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
   }
   
   td {
     border: 1px solid #000 !important;
-    padding: 8px !important;
+    padding: 6px 4px !important;
+    font-size: 9.5pt !important;
+    white-space: normal !important;
   }
 
   /* منع تجزئة الأسطر والتواقيع بشكل مشوه */
@@ -983,16 +989,16 @@ lord-icon {
 /* تحسين توزيع أعمدة جدول التقرير وتوسيع حقل الاسم */
 .report-table th.col-name,
 .report-table td.col-name {
-  width: 35% !important;
-  min-width: 140px !important;
+  width: 25% !important;
+  min-width: 110px !important;
   text-align: right !important;
   padding-right: 12px !important;
 }
 
 .report-table th.col-num,
 .report-table td.col-num {
-  width: 7% !important;
-  white-space: nowrap !important;
+  width: 10% !important;
+  white-space: normal !important;
   text-align: center !important;
 }
 
@@ -1003,12 +1009,12 @@ lord-icon {
 
 .report-table th.col-phone,
 .report-table td.col-phone {
-  width: 12% !important;
+  width: 13% !important;
 }
 
 .report-table th.col-delay,
 .report-table td.col-delay {
-  width: 12% !important;
+  width: 10% !important;
 }
 
 /* =============================================================

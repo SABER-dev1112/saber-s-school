@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import OfficialHeader from '../../../components/layout/OfficialHeader';
 import OfficialFooter from '../../../components/layout/OfficialFooter';
+import LoadingOverlay from '../../../components/common/LoadingOverlay';
 import db from '../../../services/db';
 
 export default function ManagerTeachersPage() {
@@ -17,6 +18,7 @@ export default function ManagerTeachersPage() {
   const [message, setMessage] = useState({ text: '', type: '' });
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // حماية الصفحة والتأكد من الصلاحيات
   useEffect(() => {
@@ -66,7 +68,16 @@ export default function ManagerTeachersPage() {
   const handleEdit = (teacher) => {
     setEditingId(teacher.id);
     setName(teacher.name);
-    setExtraInfo(teacher.extra_info || {});
+    
+    // ربط الحقول المخصصة بالقيم المخزنة سابقاً
+    const populatedExtra = { ...(teacher.extra_info || {}) };
+    customFields.forEach(f => {
+      if (!populatedExtra[f.id]) {
+        if (f.name === 'التخصص') populatedExtra[f.id] = teacher.extra_info?.specialty;
+        if (f.name === 'رقم الجوال') populatedExtra[f.id] = teacher.extra_info?.phone;
+      }
+    });
+    setExtraInfo(populatedExtra);
   };
 
   const handleDelete = async (id) => {
@@ -104,11 +115,26 @@ export default function ManagerTeachersPage() {
     }
   };
 
-  if (!authorized) {
-    return <div className="loading-screen">جاري التحقق من الصلاحيات...</div>;
+  if (!authorized || loading) {
+    return <LoadingOverlay message={!authorized ? "جاري التحقق من الصلاحيات..." : "جاري تحميل سجلات المعلمين..."} />;
   }
 
   const customFields = settings?.custom_fields || [];
+
+  // تصفية المعلمين حسب شريط البحث
+  const filteredTeachers = teachers.filter(t => {
+    const nameMatch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const specialty = t.extra_info?.specialty || '';
+    const specialtyMatch = specialty.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // فحص الحقول المخصصة أيضاً
+    const customMatch = customFields.some(f => {
+      const val = t.extra_info?.[f.id] || '';
+      return String(val).toLowerCase().includes(searchQuery.toLowerCase());
+    });
+
+    return nameMatch || specialtyMatch || customMatch;
+  });
 
   return (
     <div className="manager-layout">
@@ -135,7 +161,19 @@ export default function ManagerTeachersPage() {
         <div className="teachers-layout-grid">
           {/* يمين: قائمة المعلمين */}
           <div className="teachers-list-card">
-            <h2 className="card-title">قائمة معلمي المدرسة الحالية ({teachers.length} معلم)</h2>
+            <h2 className="card-title">قائمة معلمي المدرسة الحالية ({filteredTeachers.length} معلم)</h2>
+            
+            {/* شريط البحث المضاف حديثاً باسم المعلم أو التخصص */}
+            <div className="search-bar-wrapper no-print" style={{ marginBottom: '15px' }}>
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ابحث باسم المعلم أو التخصص..." 
+                className="form-input search-input" 
+              />
+            </div>
+
             <div className="table-container">
               <table>
                 <thead>
@@ -152,19 +190,20 @@ export default function ManagerTeachersPage() {
                         جاري تحميل البيانات...
                       </td>
                     </tr>
-                  ) : teachers.length === 0 ? (
+                  ) : filteredTeachers.length === 0 ? (
                     <tr>
                       <td colSpan={customFields.length + 2} style={{ textAlign: 'center', padding: '20px' }}>
-                        لا يوجد معلمون مسجلون حالياً. استخدم النموذج المرفق لإضافة معلمك الأول!
+                        لا يوجد معلمون مطبقون للبحث.
                       </td>
                     </tr>
                   ) : (
-                    teachers.map(teacher => (
+                    filteredTeachers.map(teacher => (
                       <tr key={teacher.id}>
                         <td className="teacher-name-cell">{teacher.name}</td>
-                        {customFields.map(f => (
-                          <td key={f.id}>{teacher.extra_info?.[f.id] || '-'}</td>
-                        ))}
+                        {customFields.map(f => {
+                          const val = teacher.extra_info?.[f.id] || (f.name === 'التخصص' ? teacher.extra_info?.specialty : null) || (f.name === 'رقم الجوال' ? teacher.extra_info?.phone : null) || '-';
+                          return <td key={f.id}>{val}</td>;
+                        })}
                         <td className="no-print actions-cell">
                           <button onClick={() => handleEdit(teacher)} className="btn btn-secondary action-btn-edit">تعديل</button>
                           <button onClick={() => handleDelete(teacher.id)} className="btn btn-danger action-btn-delete">حذف</button>

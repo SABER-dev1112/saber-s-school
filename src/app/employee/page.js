@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import OfficialHeader from '../../components/layout/OfficialHeader';
 import OfficialFooter from '../../components/layout/OfficialFooter';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
 import HijriDatePicker from '../../components/common/HijriDatePicker';
 import { calculateLateness, formatMinutesToHoursAndMinutes } from '../../core/lateness';
 import db from '../../services/db';
@@ -18,6 +19,7 @@ export default function EmployeeAttendancePage() {
   const [settings, setSettings] = useState(null);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // الميزات الجديدة
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,6 +85,7 @@ export default function EmployeeAttendancePage() {
     if (!authorized) return;
 
     const loadInitialData = async () => {
+      setLoading(true);
       try {
         const [teachersData, settingsData, leavesData, correctionsData] = await Promise.all([
           db.getTeachers(),
@@ -99,6 +102,8 @@ export default function EmployeeAttendancePage() {
         }
       } catch (err) {
         console.error('Error loading initial data:', err);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -454,6 +459,10 @@ export default function EmployeeAttendancePage() {
     t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (t.extra_info?.specialty && t.extra_info.specialty.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  if (!authorized || loading) {
+    return <LoadingOverlay message={!authorized ? "جاري التحقق من الصلاحيات..." : "جاري تحميل لوحة تحكم الموظف..."} />;
+  }
 
   return (
     <div className="employee-layout">

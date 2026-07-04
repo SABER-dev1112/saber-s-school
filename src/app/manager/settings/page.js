@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import OfficialHeader from '../../../components/layout/OfficialHeader';
 import OfficialFooter from '../../../components/layout/OfficialFooter';
+import LoadingOverlay from '../../../components/common/LoadingOverlay';
 import db from '../../../services/db';
 import { fetchSaudiHolidays } from '../../../services/holidays';
 import { gregorianToHijriLong } from '../../../core/calendar';
@@ -41,6 +42,7 @@ export default function ManagerSettingsPage() {
 
   const [message, setMessage] = useState({ text: '', type: '' });
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // حماية الصفحة
   useEffect(() => {
@@ -59,6 +61,7 @@ export default function ManagerSettingsPage() {
   }, [authorized]);
 
   const loadSettings = async () => {
+    setLoading(true);
     try {
       const data = await db.getSettings();
       setSettings(data);
@@ -71,6 +74,8 @@ export default function ManagerSettingsPage() {
       setDomain(data.header_metadata?.domain || '');
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -246,8 +251,8 @@ export default function ManagerSettingsPage() {
     }
   };
 
-  if (!authorized) {
-    return <div className="loading-screen">جاري التحقق من الصلاحيات...</div>;
+  if (!authorized || loading) {
+    return <LoadingOverlay message={!authorized ? "جاري التحقق من الصلاحيات..." : "جاري تحميل الإعدادات..."} />;
   }
 
   return (

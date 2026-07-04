@@ -29,7 +29,8 @@
 │   │   │   ├── Button.js
 │   │   │   ├── Input.js
 │   │   │   ├── Select.js
-│   │   │   └── HijriDatePicker.js # محدد التاريخ الهجري المتخصص
+│   │   │   ├── HijriDatePicker.js # محدد التاريخ الهجري المتخصص
+│   │   │   └── LoadingOverlay.js  # شاشة التحميل المموهة والنبضية بشعار المدرسة
 │   │   ├── layout/             # الهيدر والفوتر الرسميين للمدرسة والوزارة
 │   │   │   ├── OfficialHeader.js
 │   │   │   └── OfficialFooter.js
