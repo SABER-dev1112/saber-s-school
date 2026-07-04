@@ -8,6 +8,9 @@
 
 ```text
 ├── public/                     # الشعارات والصور الثابتة للموقع
+├── scripts/
+│   └── seed_teachers.js        # سكربت استيراد المعلمين بقاعدة البيانات عبر Node.js
+├── insert_teachers.sql         # استعلام SQL لاستيراد المعلمين مباشرة في Supabase
 ├── src/
 │   ├── app/                    # صفحات ومسارات تطبيق Next.js (App Router)
 │   │   ├── layout.js           # التنسيق الرئيسي للتطبيق وتحميل الخطوط

@@ -259,6 +259,7 @@ export default function ManagerSettingsPage() {
         <div className="navbar-links">
           <button onClick={() => router.push('/manager')} className="nav-btn">التقرير اليومي والداشبورد</button>
           <button onClick={() => router.push('/manager/reports')} className="nav-btn">التقارير والإحصائيات</button>
+          <button onClick={() => router.push('/manager/teachers')} className="nav-btn">إدارة المعلمين</button>
           <button className="nav-btn active">إعدادات المدرسة والحقول</button>
         </div>
         <button onClick={() => { sessionStorage.removeItem('userRole'); router.push('/'); }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
