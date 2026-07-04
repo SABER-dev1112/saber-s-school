@@ -371,10 +371,47 @@ tr:hover {
     background-color: var(--white) !important;
     color: #000000 !important;
     font-size: 12pt !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    display: block !important;
   }
   
   .no-print {
     display: none !important;
+  }
+  
+  /* إيقاف الفليكس والارتفاع 100vh لمنع اقتصاص الصفحات */
+  .manager-layout, .employee-layout, .root-viewport-wrapper, main, .manager-main-content {
+    display: block !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* إخفاء الظلال والحدود الرمادية التي تظهر كخطوط زرقاء أو ملونة في PDF */
+  .table-container {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .report-display-card {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   
   .official-header-container {
@@ -432,6 +469,8 @@ tr:hover {
 
   table {
     border: 1.5px solid #000 !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
   }
   
   th {
@@ -447,15 +486,25 @@ tr:hover {
     padding: 8px !important;
   }
 
+  /* منع تجزئة الأسطر والتواقيع بشكل مشوه */
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
   /* إظهار وتثبيت التواقيع في الأسفل تماماً */
-  .signature-block-print {
+  .signature-block-print, .teacher-info-strip {
     display: flex !important;
     justify-content: space-between;
     align-items: flex-end;
-    margin-top: 60px;
+    margin-top: 40px;
     width: 100%;
     padding: 0 50px;
-    page-break-inside: avoid;
+    page-break-inside: avoid !important;
   }
 
   .print-sig-col {
@@ -481,6 +530,12 @@ tr:hover {
   
   .official-footer-container {
     display: none !important;
+  }
+
+  /* تحديد هوامش الطباعة القياسية A4 */
+  @page {
+    size: A4 portrait;
+    margin: 10mm 15mm 15mm 15mm;
   }
 }
 

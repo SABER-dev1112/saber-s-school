@@ -18,6 +18,7 @@ export default function ManagerDashboard() {
   const [settings, setSettings] = useState(null);
   const [todayStr, setTodayStr] = useState('');
   const [pendingCorrections, setPendingCorrections] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // حماية الصفحة والتحقق من الصلاحية
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function ManagerDashboard() {
   }, [authorized, todayStr]);
 
   const loadDashboardData = async () => {
+    setLoading(true);
     try {
       const [teachersData, attendanceToday, allAttendance, settingsData] = await Promise.all([
         db.getTeachers(),
@@ -104,6 +106,8 @@ export default function ManagerDashboard() {
 
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -211,11 +215,11 @@ export default function ManagerDashboard() {
       <nav className="manager-navbar no-print">
         <div className="navbar-links">
           <button className="nav-btn active">التقرير اليومي والداشبورد</button>
-          <button onClick={() => router.push('/manager/reports')} className="nav-btn">التقارير والإحصائيات</button>
-          <button onClick={() => router.push('/manager/teachers')} className="nav-btn">إدارة المعلمين</button>
-          <button onClick={() => router.push('/manager/settings')} className="nav-btn">إعدادات المدرسة والحقول</button>
+          <button onClick={() => window.location.href = '/manager/reports'} className="nav-btn">التقارير والإحصائيات</button>
+          <button onClick={() => window.location.href = '/manager/teachers'} className="nav-btn">إدارة المعلمين</button>
+          <button onClick={() => window.location.href = '/manager/settings'} className="nav-btn">إعدادات المدرسة والحقول</button>
         </div>
-        <button onClick={() => { sessionStorage.removeItem('userRole'); router.push('/'); }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
+        <button onClick={() => { sessionStorage.removeItem('userRole'); window.location.href = '/'; }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
       </nav>
 
       <main className="manager-main-content">
@@ -402,6 +406,7 @@ export default function ManagerDashboard() {
                 <thead>
                   <tr>
                     <th>اسم المعلم</th>
+                    <th>التخصص</th>
                     <th>الحالة العامة</th>
                     <th>وقت الحضور العام</th>
                     <th>تأخير الصباح</th>
@@ -410,94 +415,109 @@ export default function ManagerDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {teachers.map(teacher => {
-                    const record = todayAttendance.find(r => r.teacher_id === teacher.id);
-                    let statusText = 'غياب بدون إذن';
-                    let statusClass = 'status-absent';
-                    let checkIn = '-';
-                    let delayText = 'في الموعد';
-                    let assemblyText = 'حضر في الموعد';
-                    let assemblyClass = 'status-present';
-                    let classesText = 'ملتزم بالحصص';
-                    let classesClass = 'status-present';
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '30px', fontWeight: 'bold' }}>
+                        جاري تحميل البيانات...
+                      </td>
+                    </tr>
+                  ) : teachers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '30px' }}>
+                        لا يوجد معلمون مسجلون حالياً.
+                      </td>
+                    </tr>
+                  ) : (
+                    teachers.map(teacher => {
+                      const record = todayAttendance.find(r => r.teacher_id === teacher.id);
+                      let statusText = 'غياب بدون إذن';
+                      let statusClass = 'status-absent';
+                      let checkIn = '-';
+                      let delayText = 'في الموعد';
+                      let assemblyText = 'حضر في الموعد';
+                      let assemblyClass = 'status-present';
+                      let classesText = 'ملتزم بالحصص';
+                      let classesClass = 'status-present';
 
-                    if (record) {
-                      if (record.status === 'present') {
-                        statusText = 'حاضر';
-                        statusClass = 'status-present';
-                        checkIn = record.check_in_time || '-';
-                        delayText = record.delay_minutes > 0 
-                          ? `${record.delay_minutes} دقيقة` 
-                          : 'في الموعد';
-                        
-                        // طابور الصباح
-                        if (record.assembly_status === 'late') {
-                          assemblyText = `متأخر ${record.assembly_delay_minutes} د`;
-                          assemblyClass = 'status-pending';
-                        } else if (record.assembly_status === 'absent') {
-                          assemblyText = 'غائب عن الطابور';
-                          assemblyClass = 'status-absent';
-                        }
+                      if (record) {
+                        if (record.status === 'present') {
+                          statusText = 'حاضر';
+                          statusClass = 'status-present';
+                          checkIn = record.check_in_time || '-';
+                          delayText = record.delay_minutes > 0 
+                            ? `${record.delay_minutes} دقيقة` 
+                            : 'في الموعد';
+                          
+                          // طابور الصباح
+                          if (record.assembly_status === 'late') {
+                            assemblyText = `متأخر ${record.assembly_delay_minutes} د`;
+                            assemblyClass = 'status-pending';
+                          } else if (record.assembly_status === 'absent') {
+                            assemblyText = 'غائب عن الطابور';
+                            assemblyClass = 'status-absent';
+                          }
 
-                        // الحصص
-                        const delays = record.class_delays || [];
-                        if (delays.length > 0) {
-                          const lateCount = delays.filter(d => d.status === 'late').length;
-                          const absentCount = delays.filter(d => d.status === 'absent').length;
-                          let parts = [];
-                          if (lateCount > 0) parts.push(`تأخر ${lateCount} حصص`);
-                          if (absentCount > 0) parts.push(`غياب ${absentCount} حصص`);
-                          classesText = parts.join(' و ');
-                          classesClass = 'status-pending';
+                          // الحصص
+                          const delays = record.class_delays || [];
+                          if (delays.length > 0) {
+                            const lateCount = delays.filter(d => d.status === 'late').length;
+                            const absentCount = delays.filter(d => d.status === 'absent').length;
+                            let parts = [];
+                            if (lateCount > 0) parts.push(`تأخر ${lateCount} حصص`);
+                            if (absentCount > 0) parts.push(`غياب ${absentCount} حصص`);
+                            classesText = parts.join(' و ');
+                            classesClass = 'status-pending';
+                          }
+                        } else if (record.status === 'excused' || record.status === 'emergency_approved') {
+                          statusText = 'إجازة معتمدة';
+                          statusClass = 'status-excused';
+                          delayText = '-';
+                          assemblyText = '-';
+                          assemblyClass = '';
+                          classesText = '-';
+                          classesClass = '';
+                        } else if (record.status === 'emergency_pending') {
+                          statusText = 'إجازة طارئة (معلقة)';
+                          statusClass = 'status-pending';
+                          delayText = '-';
+                          assemblyText = '-';
+                          assemblyClass = '';
+                          classesText = '-';
+                          classesClass = '';
                         }
-                      } else if (record.status === 'excused' || record.status === 'emergency_approved') {
-                        statusText = 'إجازة معتمدة';
-                        statusClass = 'status-excused';
-                        delayText = '-';
-                        assemblyText = '-';
-                        assemblyClass = '';
-                        classesText = '-';
-                        classesClass = '';
-                      } else if (record.status === 'emergency_pending') {
-                        statusText = 'إجازة طارئة (معلقة)';
-                        statusClass = 'status-pending';
+                      } else {
                         delayText = '-';
                         assemblyText = '-';
                         assemblyClass = '';
                         classesText = '-';
                         classesClass = '';
                       }
-                    } else {
-                      delayText = '-';
-                      assemblyText = '-';
-                      assemblyClass = '';
-                      classesText = '-';
-                      classesClass = '';
-                    }
 
-                    return (
-                      <tr key={teacher.id}>
-                        <td className="teacher-name-cell">{teacher.name}</td>
-                        <td>
-                          <span className={`status-badge ${statusClass}`}>{statusText}</span>
-                        </td>
-                        <td>{checkIn}</td>
-                        <td>
-                          {record && record.status === 'present' && record.delay_minutes > 0 ? (
-                            <span className="delay-text-highlight">{delayText}</span>
-                          ) : (
-                            <span>{delayText}</span>
-                          )}
-                        </td>
-                        <td>
-                          {assemblyClass ? <span className={`status-badge ${assemblyClass}`}>{assemblyText}</span> : '-'}
-                        </td>
-                        <td>
-                          {classesClass ? <span className={`status-badge ${classesClass}`}>{classesText}</span> : '-'}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      return (
+                        <tr key={teacher.id}>
+                          <td className="teacher-name-cell">{teacher.name}</td>
+                          <td>{teacher.extra_info?.specialty || '-'}</td>
+                          <td>
+                            <span className={`status-badge ${statusClass}`}>{statusText}</span>
+                          </td>
+                          <td>{checkIn}</td>
+                          <td>
+                            {record && record.status === 'present' && record.delay_minutes > 0 ? (
+                              <span className="delay-text-highlight">{delayText}</span>
+                            ) : (
+                              <span>{delayText}</span>
+                            )}
+                          </td>
+                          <td>
+                            {assemblyClass ? <span className={`status-badge ${assemblyClass}`}>{assemblyText}</span> : '-'}
+                          </td>
+                          <td>
+                            {classesClass ? <span className={`status-badge ${classesClass}`}>{classesText}</span> : '-'}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

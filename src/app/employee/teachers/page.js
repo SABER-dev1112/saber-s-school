@@ -16,6 +16,7 @@ export default function EmployeeTeachersPage() {
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // حماية الصفحة والتأكد من الصلاحيات
   useEffect(() => {
@@ -34,6 +35,7 @@ export default function EmployeeTeachersPage() {
   }, [authorized]);
 
   const loadData = async () => {
+    setLoading(true);
     try {
       const [teachersData, settingsData] = await Promise.all([
         db.getTeachers(),
@@ -43,6 +45,8 @@ export default function EmployeeTeachersPage() {
       setSettings(settingsData);
     } catch (err) {
       console.error('Failed to load data:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,12 +117,12 @@ export default function EmployeeTeachersPage() {
       {/* شريط التنقل */}
       <nav className="employee-navbar no-print">
         <div className="navbar-links">
-          <button onClick={() => router.push('/employee')} className="nav-btn">تسجيل الحضور اليومي</button>
-          <button onClick={() => router.push('/employee?tab=corrections')} className="nav-btn">تعديل مستندات</button>
+          <button onClick={() => window.location.href = '/employee'} className="nav-btn">تسجيل الحضور اليومي</button>
+          <button onClick={() => window.location.href = '/employee?tab=corrections'} className="nav-btn">تعديل مستندات</button>
           <button className="nav-btn active">إدارة المعلمين</button>
-          <button onClick={() => router.push('/employee/password')} className="nav-btn">تغيير كلمة المرور</button>
+          <button onClick={() => window.location.href = '/employee/password'} className="nav-btn">تغيير كلمة المرور</button>
         </div>
-        <button onClick={() => { sessionStorage.removeItem('userRole'); router.push('/'); }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
+        <button onClick={() => { sessionStorage.removeItem('userRole'); window.location.href = '/'; }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
       </nav>
 
       <main className="employee-main-content">
@@ -142,7 +146,13 @@ export default function EmployeeTeachersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {teachers.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={customFields.length + 2} style={{ textAlign: 'center', padding: '20px', fontWeight: 'bold' }}>
+                        جاري تحميل البيانات...
+                      </td>
+                    </tr>
+                  ) : teachers.length === 0 ? (
                     <tr>
                       <td colSpan={customFields.length + 2} style={{ textAlign: 'center', padding: '20px' }}>
                         لا يوجد معلمون مسجلون حالياً. استخدم النموذج المرفق لإضافة معلمك الأول!

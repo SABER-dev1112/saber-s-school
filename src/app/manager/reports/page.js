@@ -323,12 +323,12 @@ export default function ManagerReportsPage() {
       {/* شريط تنقل المدير */}
       <nav className="manager-navbar no-print">
         <div className="navbar-links">
-          <button onClick={() => router.push('/manager')} className="nav-btn">التقرير اليومي والداشبورد</button>
+          <button onClick={() => window.location.href = '/manager'} className="nav-btn">التقرير اليومي والداشبورد</button>
           <button className="nav-btn active">التقارير والإحصائيات</button>
-          <button onClick={() => router.push('/manager/teachers')} className="nav-btn">إدارة المعلمين</button>
-          <button onClick={() => router.push('/manager/settings')} className="nav-btn">إعدادات المدرسة والحقول</button>
+          <button onClick={() => window.location.href = '/manager/teachers'} className="nav-btn">إدارة المعلمين</button>
+          <button onClick={() => window.location.href = '/manager/settings'} className="nav-btn">إعدادات المدرسة والحقول</button>
         </div>
-        <button onClick={() => { sessionStorage.removeItem('userRole'); router.push('/'); }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
+        <button onClick={() => { sessionStorage.removeItem('userRole'); window.location.href = '/'; }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
       </nav>
 
       <main className="manager-main-content">
@@ -1014,6 +1014,9 @@ export default function ManagerReportsPage() {
             background-color: transparent !important;
             padding: 0 !important;
             margin: 0 !important;
+            display: block !important;
+            height: auto !important;
+            min-height: auto !important;
           }
           .report-display-card {
             box-shadow: none !important;
@@ -1022,6 +1025,17 @@ export default function ManagerReportsPage() {
             margin: 0 !important;
             max-width: 100% !important;
             width: 100% !important;
+            background: transparent !important;
+          }
+          .table-container {
+            border: none !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+            background: transparent !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           .printable-report-body {
             display: block !important;

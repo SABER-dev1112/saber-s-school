@@ -67,11 +67,11 @@ export default function EmployeePasswordPage() {
       {/* شريط التنقل */}
       <nav className="employee-navbar no-print">
         <div className="navbar-links">
-          <button onClick={() => router.push('/employee')} className="nav-btn">تسجيل الحضور اليومي</button>
-          <button onClick={() => router.push('/employee/teachers')} className="nav-btn">إدارة المعلمين</button>
+          <button onClick={() => window.location.href = '/employee'} className="nav-btn">تسجيل الحضور اليومي</button>
+          <button onClick={() => window.location.href = '/employee/teachers'} className="nav-btn">إدارة المعلمين</button>
           <button className="nav-btn active">تغيير كلمة المرور</button>
         </div>
-        <button onClick={() => { sessionStorage.removeItem('userRole'); router.push('/'); }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
+        <button onClick={() => { sessionStorage.removeItem('userRole'); window.location.href = '/'; }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
       </nav>
 
       <main className="employee-main-content">

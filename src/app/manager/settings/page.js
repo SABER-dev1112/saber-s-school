@@ -257,12 +257,12 @@ export default function ManagerSettingsPage() {
       {/* شريط تنقل المدير */}
       <nav className="manager-navbar no-print">
         <div className="navbar-links">
-          <button onClick={() => router.push('/manager')} className="nav-btn">التقرير اليومي والداشبورد</button>
-          <button onClick={() => router.push('/manager/reports')} className="nav-btn">التقارير والإحصائيات</button>
-          <button onClick={() => router.push('/manager/teachers')} className="nav-btn">إدارة المعلمين</button>
+          <button onClick={() => window.location.href = '/manager'} className="nav-btn">التقرير اليومي والداشبورد</button>
+          <button onClick={() => window.location.href = '/manager/reports'} className="nav-btn">التقارير والإحصائيات</button>
+          <button onClick={() => window.location.href = '/manager/teachers'} className="nav-btn">إدارة المعلمين</button>
           <button className="nav-btn active">إعدادات المدرسة والحقول</button>
         </div>
-        <button onClick={() => { sessionStorage.removeItem('userRole'); router.push('/'); }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
+        <button onClick={() => { sessionStorage.removeItem('userRole'); window.location.href = '/'; }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
       </nav>
 
       <main className="manager-main-content">

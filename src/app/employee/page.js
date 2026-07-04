@@ -474,10 +474,10 @@ export default function EmployeeAttendancePage() {
           >
             تعديل مستندات
           </button>
-          <button onClick={() => router.push('/employee/teachers')} className="nav-btn">إدارة المعلمين</button>
-          <button onClick={() => router.push('/employee/password')} className="nav-btn">تغيير كلمة المرور</button>
+          <button onClick={() => window.location.href = '/employee/teachers'} className="nav-btn">إدارة المعلمين</button>
+          <button onClick={() => window.location.href = '/employee/password'} className="nav-btn">تغيير كلمة المرور</button>
         </div>
-        <button onClick={() => { sessionStorage.removeItem('userRole'); router.push('/'); }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
+        <button onClick={() => { sessionStorage.removeItem('userRole'); window.location.href = '/'; }} className="btn btn-danger logout-btn">تسجيل الخروج</button>
       </nav>
 
       <main className="employee-main-content">
