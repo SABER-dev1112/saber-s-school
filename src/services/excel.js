@@ -142,7 +142,8 @@ export function exportCollectiveReport(reportData, schoolName, periodText, subFi
       </xml>
       <![endif]-->
       <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; direction: rtl; }
+        * { font-family: Arial, sans-serif; }
+        body { font-family: Arial, sans-serif; direction: rtl; }
         .school-title { font-size: 16pt; font-weight: bold; color: #15445A; text-align: center; }
         .report-subtitle { font-size: 12pt; font-weight: bold; color: #07A869; text-align: center; }
         .period-text { font-size: 10pt; color: #64748B; text-align: center; }
@@ -329,7 +330,8 @@ export function exportIndividualReport(teacher, attendanceRecords, schoolName, p
       </xml>
       <![endif]-->
       <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; direction: rtl; }
+        * { font-family: Arial, sans-serif; }
+        body { font-family: Arial, sans-serif; direction: rtl; }
         .school-title { font-size: 16pt; font-weight: bold; color: #15445A; text-align: center; }
         .report-subtitle { font-size: 12pt; font-weight: bold; color: #07A869; text-align: center; }
         .meta-text { font-size: 10pt; color: #334155; text-align: center; }
