@@ -28,6 +28,9 @@ export default function EmployeeAttendancePage() {
   const [verified, setVerified] = useState({});
   const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'corrections'
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isGeneralSubmitted, setIsGeneralSubmitted] = useState(false);
+  const [isAssemblySubmitted, setIsAssemblySubmitted] = useState(false);
+  const [isClassesSubmitted, setIsClassesSubmitted] = useState(false);
 
   // قراءة معامل tab من الرابط (?tab=corrections) بدون useSearchParams
   useEffect(() => {
@@ -137,8 +140,14 @@ export default function EmployeeAttendancePage() {
     const loadAttendanceForDate = async () => {
       try {
         const existRecords = await db.getAttendance(date);
-        const hasExistingRecords = existRecords.length > 0;
-        setIsSubmitted(hasExistingRecords);
+        const hasGeneral = existRecords.some(r => r.submitted_general);
+        const hasAssembly = existRecords.some(r => r.submitted_assembly);
+        const hasClasses = existRecords.some(r => r.submitted_classes);
+
+        setIsGeneralSubmitted(hasGeneral);
+        setIsAssemblySubmitted(hasAssembly);
+        setIsClassesSubmitted(hasClasses);
+        setIsSubmitted(hasGeneral && hasAssembly && hasClasses);
 
         const attendanceMap = {};
         const verifiedMap = {};
@@ -174,7 +183,10 @@ export default function EmployeeAttendancePage() {
               assembly_check_in_time: existingRecord.assembly_check_in_time || '',
               assembly_delay_minutes: existingRecord.assembly_delay_minutes || 0,
               class_delays: existingRecord.class_delays || [],
-              locked: false
+              locked: false,
+              submitted_general: existingRecord.submitted_general || false,
+              submitted_assembly: existingRecord.submitted_assembly || false,
+              submitted_classes: existingRecord.submitted_classes || false
             };
             verifiedMap[teacher.id] = true; // الحضور المسجل سابقاً مراجع ومؤكد
           } else {
@@ -187,7 +199,10 @@ export default function EmployeeAttendancePage() {
               assembly_check_in_time: '',
               assembly_delay_minutes: 0,
               class_delays: [],
-              locked: false
+              locked: false,
+              submitted_general: false,
+              submitted_assembly: false,
+              submitted_classes: false
             };
             verifiedMap[teacher.id] = false;
           }
@@ -354,19 +369,24 @@ export default function EmployeeAttendancePage() {
   };
 
   // تفعيل المودال النهائي
-  const showFinalConfirmation = () => {
+  const showFinalConfirmation = (section) => {
+    let sectionTitle = '';
+    if (section === 'general') sectionTitle = 'التحضير الصباحي العام';
+    if (section === 'assembly') sectionTitle = 'تحضير طابور الصباح';
+    if (section === 'classes') sectionTitle = 'تأخر وغياب الحصص';
+
     setModalConfig({
       show: true,
       type: 'confirm',
-      title: 'التأكيد النهائي للتسجيل',
-      message: 'هل أنت متأكد تماماً أنه سيتم التسجيل وقمت بمراجعة كل المواعيد والمدرسين؟ بعد الإرسال سيتم قفل التحضير لهذا اليوم بشكل نهائي ولا يمكن تعديله إلا بطلب تصحيح من المدير.',
+      title: `التأكيد النهائي لإرسال ${sectionTitle}`,
+      message: `هل أنت متأكد تماماً من إرسال ${sectionTitle}؟ بعد الإرسال سيتم قفل هذا القسم ولا يمكن تعديله إلا بطلب تصحيح من المدير.`,
       unverifiedList: [],
-      onConfirm: executeSave
+      onConfirm: () => executeSave(section)
     });
   };
 
   // بدء الحفظ بالتحقق الثنائي
-  const handleSaveAttendance = () => {
+  const handleSaveAttendance = (section) => {
     // تجميع أسماء المعلمين غير المؤكدين
     const unverifiedNames = teachers
       .filter(t => !verified[t.id])
@@ -379,14 +399,14 @@ export default function EmployeeAttendancePage() {
         title: 'تنبيه: لم يتم مراجعة كافة المعلمين',
         message: 'المعلمين المذكورين أدناه لم يتم تأكيدهم بشكل فردي، هل حضروا فعلاً في نفس الموعد الافتراضي أم نسيتهم؟ يرجى التحقق:',
         unverifiedList: unverifiedNames,
-        onConfirm: () => showFinalConfirmation()
+        onConfirm: () => showFinalConfirmation(section)
       });
     } else {
-      showFinalConfirmation();
+      showFinalConfirmation(section);
     }
   };
 
-  const executeSave = async () => {
+  const executeSave = async (section) => {
     setSaving(true);
     setMessage({ text: '', type: '' });
     setModalConfig(prev => ({ ...prev, show: false }));
@@ -394,25 +414,39 @@ export default function EmployeeAttendancePage() {
     try {
       const recordsToSave = Object.keys(attendance).map(teacherId => {
         const item = attendance[teacherId];
-        return {
+        const rec = {
           teacher_id: teacherId,
           date: date,
-          status: item.status,
-          check_in_time: item.status === 'present' ? item.check_in_time : null,
-          delay_minutes: item.delay_minutes || 0,
-          assembly_status: item.status === 'present' ? (item.assembly_status || 'present') : 'present',
-          assembly_check_in_time: item.status === 'present' ? (item.assembly_check_in_time || null) : null,
-          assembly_delay_minutes: item.status === 'present' ? (item.assembly_delay_minutes || 0) : 0,
-          class_delays: item.status === 'present' ? (item.class_delays || []) : []
         };
+
+        if (section === 'general') {
+          rec.status = item.status;
+          rec.check_in_time = item.status === 'present' ? item.check_in_time : null;
+          rec.delay_minutes = item.delay_minutes || 0;
+          rec.submitted_general = true;
+        } else if (section === 'assembly') {
+          rec.assembly_status = item.status === 'present' ? (item.assembly_status || 'present') : 'present';
+          rec.assembly_check_in_time = item.status === 'present' ? (item.assembly_check_in_time || null) : null;
+          rec.assembly_delay_minutes = item.status === 'present' ? (item.assembly_delay_minutes || 0) : 0;
+          rec.submitted_assembly = true;
+        } else if (section === 'classes') {
+          rec.class_delays = item.status === 'present' ? (item.class_delays || []) : [];
+          rec.submitted_classes = true;
+        }
+
+        return rec;
       });
 
       const res = await db.saveAttendance(recordsToSave);
-      setIsSubmitted(true);
+      
+      if (section === 'general') setIsGeneralSubmitted(true);
+      if (section === 'assembly') setIsAssemblySubmitted(true);
+      if (section === 'classes') setIsClassesSubmitted(true);
+
       if (res && res.fromOfflineQueue) {
-        setMessage({ text: 'تعذر الاتصال بالسحابة. تم حفظ سجل التحضير مؤقتاً على جهازك، وسيتم رفعه تلقائياً فور عودة الإنترنت.', type: 'warning' });
+        setMessage({ text: 'تعذر الاتصال بالسحابة. تم حفظ السجلات مؤقتاً على جهازك، وسيتم رفعها تلقائياً فور عودة الإنترنت.', type: 'warning' });
       } else {
-        setMessage({ text: 'تم حفظ وقفل سجل الحضور والغياب لليوم بنجاح.', type: 'success' });
+        setMessage({ text: 'تم حفظ وإرسال بيانات هذا القسم بنجاح.', type: 'success' });
       }
     } catch (err) {
       console.error(err);
@@ -545,10 +579,12 @@ export default function EmployeeAttendancePage() {
                 </div>
               </div>
 
-              {isSubmitted && (
+              {((activeSubTab === 'general' && isGeneralSubmitted) || 
+                (activeSubTab === 'assembly' && isAssemblySubmitted) || 
+                (activeSubTab === 'classes' && isClassesSubmitted)) && (
                 <div style={{ padding: '12px 18px', backgroundColor: '#FEF3C7', color: '#B45309', borderRadius: '6px', border: '1px solid #FDE68A', fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <AlertIcon type="warning" size="22px" color="#B45309" />
-                  تنبيه: تم إرسال وقفل حضور وغياب هذا اليوم مسبقاً. لتعديل أي خطأ، يرجى استخدام قسم "تعديل مستندات".
+                  تنبيه: تم إرسال وقفل هذا القسم لليوم مسبقاً. لتعديل أي خطأ، يرجى استخدام قسم "تعديل مستندات".
                 </div>
               )}
             </div>
@@ -562,22 +598,34 @@ export default function EmployeeAttendancePage() {
                   type="button"
                   onClick={() => setActiveSubTab('general')}
                   className={`sub-tab-btn ${activeSubTab === 'general' ? 'active' : ''}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  التحضير الصباحي العام
+                  <span>التحضير الصباحي العام</span>
+                  <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', backgroundColor: isGeneralSubmitted ? '#DEF7EC' : '#FEF3C7', color: isGeneralSubmitted ? '#03543F' : '#B45309' }}>
+                    {isGeneralSubmitted ? '✓ مرسل' : '⌛ معلق'}
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveSubTab('assembly')}
                   className={`sub-tab-btn ${activeSubTab === 'assembly' ? 'active' : ''}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  طابور الصباح
+                  <span>طابور الصباح</span>
+                  <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', backgroundColor: isAssemblySubmitted ? '#DEF7EC' : '#FEF3C7', color: isAssemblySubmitted ? '#03543F' : '#B45309' }}>
+                    {isAssemblySubmitted ? '✓ مرسل' : '⌛ معلق'}
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveSubTab('classes')}
                   className={`sub-tab-btn ${activeSubTab === 'classes' ? 'active' : ''}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  تأخر وغياب الحصص
+                  <span>تأخر وغياب الحصص</span>
+                  <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', backgroundColor: isClassesSubmitted ? '#DEF7EC' : '#FEF3C7', color: isClassesSubmitted ? '#03543F' : '#B45309' }}>
+                    {isClassesSubmitted ? '✓ مرسل' : '⌛ معلق'}
+                  </span>
                 </button>
               </div>
               
@@ -625,7 +673,9 @@ export default function EmployeeAttendancePage() {
                       filteredTeachers.map(teacher => {
                         const record = attendance[teacher.id] || { status: 'present', check_in_time: '', delay_minutes: 0, isLate: false, locked: false, assembly_status: 'present', assembly_check_in_time: '', assembly_delay_minutes: 0, class_delays: [] };
                         const isTeacherVerified = !!verified[teacher.id];
-                        const isDisabled = isSubmitted || record.locked || record.status === 'absent' || record.status === 'excused';
+                        const isGeneralDisabled = isGeneralSubmitted || record.locked;
+                        const isAssemblyDisabled = isAssemblySubmitted || record.locked || record.status === 'absent' || record.status === 'excused';
+                        const isClassesDisabled = isClassesSubmitted || record.locked || record.status === 'absent' || record.status === 'excused';
 
                         return (
                           <tr key={teacher.id}>
@@ -642,7 +692,7 @@ export default function EmployeeAttendancePage() {
                                     <select
                                       value={record.status}
                                       onChange={(e) => handleStatusChange(teacher.id, e.target.value)}
-                                      disabled={isSubmitted}
+                                      disabled={isGeneralDisabled}
                                       className="table-select"
                                     >
                                       <option value="present">حاضر</option>
@@ -657,7 +707,7 @@ export default function EmployeeAttendancePage() {
                                       <div style={{ display: 'flex', gap: '8px' }}>
                                         <button
                                           type="button"
-                                          disabled={isSubmitted}
+                                          disabled={isGeneralDisabled}
                                           onClick={() => handleLateToggle(teacher.id, false)}
                                           className={`late-toggle-btn ${!record.isLate ? 'active-ontime' : ''}`}
                                         >
@@ -665,7 +715,7 @@ export default function EmployeeAttendancePage() {
                                         </button>
                                         <button
                                           type="button"
-                                          disabled={isSubmitted}
+                                          disabled={isGeneralDisabled}
                                           onClick={() => handleLateToggle(teacher.id, true)}
                                           className={`late-toggle-btn ${record.isLate ? 'active-late' : ''}`}
                                         >
@@ -677,7 +727,7 @@ export default function EmployeeAttendancePage() {
                                           type="time"
                                           value={record.check_in_time}
                                           onChange={(e) => handleTimeChange(teacher.id, e.target.value)}
-                                          disabled={isSubmitted}
+                                          disabled={isGeneralDisabled}
                                           className="table-time-input"
                                         />
                                       )}
@@ -707,7 +757,7 @@ export default function EmployeeAttendancePage() {
                                   <select
                                     value={record.status !== 'present' ? 'absent' : (record.assembly_status || 'present')}
                                     onChange={(e) => handleAssemblyStatusChange(teacher.id, e.target.value)}
-                                    disabled={isDisabled}
+                                    disabled={isAssemblyDisabled}
                                     className="table-select"
                                   >
                                     <option value="present">✓ حضر في الموعد</option>
@@ -721,7 +771,7 @@ export default function EmployeeAttendancePage() {
                                       <select
                                         value={record.assembly_entry_mode || 'minutes'}
                                         onChange={(e) => handleAssemblyEntryModeChange(teacher.id, e.target.value)}
-                                        disabled={isSubmitted}
+                                        disabled={isAssemblyDisabled}
                                         className="table-select"
                                         style={{ padding: '4px 8px', fontSize: '12px' }}
                                       >
@@ -733,7 +783,7 @@ export default function EmployeeAttendancePage() {
                                           type="time"
                                           value={record.assembly_check_in_time || '06:30'}
                                           onChange={(e) => handleAssemblyTimeChange(teacher.id, e.target.value)}
-                                          disabled={isSubmitted}
+                                          disabled={isAssemblyDisabled}
                                           className="table-time-input"
                                         />
                                       ) : (
@@ -743,7 +793,7 @@ export default function EmployeeAttendancePage() {
                                           placeholder="الدقائق"
                                           value={record.assembly_delay_minutes || ''}
                                           onChange={(e) => handleAssemblyMinutesChange(teacher.id, e.target.value)}
-                                          disabled={isSubmitted}
+                                          disabled={isAssemblyDisabled}
                                           className="table-time-input"
                                           style={{ padding: '4px 8px' }}
                                         />
@@ -798,7 +848,7 @@ export default function EmployeeAttendancePage() {
                                     <button
                                       type="button"
                                       onClick={() => openClassDelaysModal(teacher)}
-                                      disabled={isSubmitted}
+                                      disabled={isClassesDisabled}
                                       className="btn btn-secondary"
                                       style={{ padding: '4px 10px', fontSize: '13px' }}
                                     >
@@ -814,7 +864,7 @@ export default function EmployeeAttendancePage() {
                             <td className="no-print">
                               <button
                                 type="button"
-                                disabled={isSubmitted || record.locked}
+                                disabled={((activeSubTab === 'general' && isGeneralSubmitted) || (activeSubTab === 'assembly' && isAssemblySubmitted) || (activeSubTab === 'classes' && isClassesSubmitted)) || record.locked}
                                 onClick={() => handleToggleVerify(teacher.id)}
                                 className={`btn-verify-row ${isTeacherVerified ? 'verified' : ''}`}
                               >
@@ -839,7 +889,9 @@ export default function EmployeeAttendancePage() {
                   filteredTeachers.map(teacher => {
                     const record = attendance[teacher.id] || { status: 'present', check_in_time: '', delay_minutes: 0, isLate: false, locked: false, assembly_status: 'present', assembly_check_in_time: '', assembly_delay_minutes: 0, class_delays: [] };
                     const isTeacherVerified = !!verified[teacher.id];
-                    const isDisabled = isSubmitted || record.locked || record.status === 'absent' || record.status === 'excused';
+                    const isGeneralDisabled = isGeneralSubmitted || record.locked;
+                    const isAssemblyDisabled = isAssemblySubmitted || record.locked || record.status === 'absent' || record.status === 'excused';
+                    const isClassesDisabled = isClassesSubmitted || record.locked || record.status === 'absent' || record.status === 'excused';
 
                     return (
                       <div key={teacher.id} className={`teacher-mobile-card ${isTeacherVerified ? 'card-verified' : ''}`}>
@@ -850,7 +902,7 @@ export default function EmployeeAttendancePage() {
                           </div>
                           <button
                             type="button"
-                            disabled={isSubmitted || record.locked}
+                            disabled={((activeSubTab === 'general' && isGeneralSubmitted) || (activeSubTab === 'assembly' && isAssemblySubmitted) || (activeSubTab === 'classes' && isClassesSubmitted)) || record.locked}
                             onClick={() => handleToggleVerify(teacher.id)}
                             className={`btn-verify-mobile ${isTeacherVerified ? 'verified' : ''}`}
                           >
@@ -871,7 +923,7 @@ export default function EmployeeAttendancePage() {
                                   <select
                                     value={record.status}
                                     onChange={(e) => handleStatusChange(teacher.id, e.target.value)}
-                                    disabled={isSubmitted}
+                                    disabled={isGeneralDisabled}
                                     className="form-select-mobile"
                                   >
                                     <option value="present">حاضر</option>
@@ -888,7 +940,7 @@ export default function EmployeeAttendancePage() {
                                   <div style={{ display: 'flex', gap: '6px' }}>
                                     <button
                                       type="button"
-                                      disabled={isSubmitted}
+                                      disabled={isGeneralDisabled}
                                       onClick={() => handleLateToggle(teacher.id, false)}
                                       className={`late-toggle-btn ${!record.isLate ? 'active-ontime' : ''}`}
                                       style={{ fontSize: '12px', padding: '4px 8px' }}
@@ -897,7 +949,7 @@ export default function EmployeeAttendancePage() {
                                     </button>
                                     <button
                                       type="button"
-                                      disabled={isSubmitted}
+                                      disabled={isGeneralDisabled}
                                       onClick={() => handleLateToggle(teacher.id, true)}
                                       className={`late-toggle-btn ${record.isLate ? 'active-late' : ''}`}
                                       style={{ fontSize: '12px', padding: '4px 8px' }}
@@ -916,7 +968,7 @@ export default function EmployeeAttendancePage() {
                                     type="time"
                                     value={record.check_in_time}
                                     onChange={(e) => handleTimeChange(teacher.id, e.target.value)}
-                                    disabled={isSubmitted}
+                                    disabled={isGeneralDisabled}
                                     className="form-time-input-mobile"
                                   />
                                 </div>
@@ -946,7 +998,7 @@ export default function EmployeeAttendancePage() {
                                 <select
                                   value={record.status !== 'present' ? 'absent' : (record.assembly_status || 'present')}
                                   onChange={(e) => handleAssemblyStatusChange(teacher.id, e.target.value)}
-                                  disabled={isDisabled}
+                                  disabled={isAssemblyDisabled}
                                   className="form-select-mobile"
                                 >
                                   <option value="present">✓ حضر</option>
@@ -962,7 +1014,7 @@ export default function EmployeeAttendancePage() {
                                     <select
                                       value={record.assembly_entry_mode || 'minutes'}
                                       onChange={(e) => handleAssemblyEntryModeChange(teacher.id, e.target.value)}
-                                      disabled={isSubmitted}
+                                      disabled={isAssemblyDisabled}
                                       className="form-select-mobile"
                                     >
                                       <option value="minutes">دقائق مباشرة</option>
@@ -976,7 +1028,7 @@ export default function EmployeeAttendancePage() {
                                         type="time"
                                         value={record.assembly_check_in_time || '06:30'}
                                         onChange={(e) => handleAssemblyTimeChange(teacher.id, e.target.value)}
-                                        disabled={isSubmitted}
+                                        disabled={isAssemblyDisabled}
                                         className="form-time-input-mobile"
                                       />
                                     ) : (
@@ -986,7 +1038,7 @@ export default function EmployeeAttendancePage() {
                                         placeholder="الدقائق"
                                         value={record.assembly_delay_minutes || ''}
                                         onChange={(e) => handleAssemblyMinutesChange(teacher.id, e.target.value)}
-                                        disabled={isSubmitted}
+                                        disabled={isAssemblyDisabled}
                                         className="form-time-input-mobile"
                                         style={{ width: '80px' }}
                                       />
@@ -1044,7 +1096,7 @@ export default function EmployeeAttendancePage() {
                                   <button
                                     type="button"
                                     onClick={() => openClassDelaysModal(teacher)}
-                                    disabled={isSubmitted}
+                                    disabled={isClassesDisabled}
                                     className="btn btn-secondary"
                                     style={{ padding: '6px 12px', fontSize: '12px' }}
                                   >
@@ -1061,17 +1113,35 @@ export default function EmployeeAttendancePage() {
                 )}
               </div>
 
-              {!isSubmitted && (
-                <div className="card-actions no-print">
+              <div className="card-actions no-print">
+                {activeSubTab === 'general' && (
                   <button 
-                    onClick={handleSaveAttendance} 
-                    disabled={saving || teachers.length === 0} 
+                    onClick={() => handleSaveAttendance('general')} 
+                    disabled={saving || teachers.length === 0 || isGeneralSubmitted} 
                     className="btn btn-navy save-attendance-btn"
                   >
-                    {saving ? 'جاري حفظ الحضور...' : 'حفظ وإرسال سجل الحضور والغياب'}
+                    {saving ? 'جاري الحفظ...' : isGeneralSubmitted ? '✓ تم إرسال وقفل التحضير الصباحي العام' : 'حفظ وإرسال التحضير الصباحي العام'}
                   </button>
-                </div>
-              )}
+                )}
+                {activeSubTab === 'assembly' && (
+                  <button 
+                    onClick={() => handleSaveAttendance('assembly')} 
+                    disabled={saving || teachers.length === 0 || isAssemblySubmitted} 
+                    className="btn btn-navy save-attendance-btn"
+                  >
+                    {saving ? 'جاري الحفظ...' : isAssemblySubmitted ? '✓ تم إرسال وقفل تحضير الطابور' : 'حفظ وإرسال تحضير طابور الصباح'}
+                  </button>
+                )}
+                {activeSubTab === 'classes' && (
+                  <button 
+                    onClick={() => handleSaveAttendance('classes')} 
+                    disabled={saving || teachers.length === 0 || isClassesSubmitted} 
+                    className="btn btn-navy save-attendance-btn"
+                  >
+                    {saving ? 'جاري الحفظ...' : isClassesSubmitted ? '✓ تم إرسال وقفل حضور الحصص' : 'حفظ وإرسال غياب وتأخر الحصص'}
+                  </button>
+                )}
+              </div>
             </div>
           </>
         )}

@@ -270,18 +270,60 @@ export const db = {
 
     if (isSupabaseConfigured) {
       try {
+        const dates = [...new Set(sanitizedRecords.map(r => r.date))];
+        let mergedRecords = [...sanitizedRecords];
+
+        if (dates.length > 0) {
+          const { data: existingRecords, error: fetchError } = await supabase
+            .from('attendance')
+            .select('*')
+            .in('date', dates);
+
+          if (!fetchError && existingRecords) {
+            mergedRecords = sanitizedRecords.map(newRec => {
+              const match = existingRecords.find(e => e.teacher_id === newRec.teacher_id && e.date === newRec.date);
+              if (match) {
+                const merged = { ...match };
+                if (newRec.submitted_general) {
+                  merged.status = newRec.status;
+                  merged.check_in_time = newRec.check_in_time;
+                  merged.delay_minutes = newRec.delay_minutes;
+                  merged.submitted_general = true;
+                }
+                if (newRec.submitted_assembly) {
+                  merged.assembly_status = newRec.assembly_status;
+                  merged.assembly_check_in_time = newRec.assembly_check_in_time;
+                  merged.assembly_delay_minutes = newRec.assembly_delay_minutes;
+                  merged.submitted_assembly = true;
+                }
+                if (newRec.submitted_classes) {
+                  merged.class_delays = newRec.class_delays;
+                  merged.submitted_classes = true;
+                }
+                Object.keys(newRec).forEach(key => {
+                  if (newRec[key] !== undefined && newRec[key] !== null) {
+                    merged[key] = newRec[key];
+                  }
+                });
+                return merged;
+              }
+              return newRec;
+            });
+          }
+        }
+
         const { data, error } = await supabase
           .from('attendance')
-          .upsert(sanitizedRecords, { onConflict: 'teacher_id,date' })
+          .upsert(mergedRecords, { onConflict: 'teacher_id,date' })
           .select();
         
         if (error) {
-          if (error.code === 'PGRST116' || error.status === 401 || error.status === 403) {
+          if (error.status >= 400 && error.status < 500 && error.status !== 408 && error.status !== 429) {
             throw error;
           }
           console.warn('Supabase saveAttendance failed, enqueuing locally:', error);
-          enqueueAttendance(sanitizedRecords);
-          return { data: sanitizedRecords, fromOfflineQueue: true };
+          enqueueAttendance(mergedRecords);
+          return { data: mergedRecords, fromOfflineQueue: true };
         }
         return data;
       } catch (err) {
@@ -294,7 +336,29 @@ export const db = {
       sanitizedRecords.forEach(newRec => {
         const index = attendance.findIndex(a => a.teacher_id === newRec.teacher_id && a.date === newRec.date);
         if (index !== -1) {
-          attendance[index] = { ...attendance[index], ...newRec };
+          const merged = { ...attendance[index] };
+          if (newRec.submitted_general) {
+            merged.status = newRec.status;
+            merged.check_in_time = newRec.check_in_time;
+            merged.delay_minutes = newRec.delay_minutes;
+            merged.submitted_general = true;
+          }
+          if (newRec.submitted_assembly) {
+            merged.assembly_status = newRec.assembly_status;
+            merged.assembly_check_in_time = newRec.assembly_check_in_time;
+            merged.assembly_delay_minutes = newRec.assembly_delay_minutes;
+            merged.submitted_assembly = true;
+          }
+          if (newRec.submitted_classes) {
+            merged.class_delays = newRec.class_delays;
+            merged.submitted_classes = true;
+          }
+          Object.keys(newRec).forEach(key => {
+            if (newRec[key] !== undefined && newRec[key] !== null) {
+              merged[key] = newRec[key];
+            }
+          });
+          attendance[index] = merged;
         } else {
           attendance.push({ id: 'att_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5), ...newRec });
         }
