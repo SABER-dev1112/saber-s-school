@@ -9,6 +9,7 @@ import HijriDatePicker from '../../../components/common/HijriDatePicker';
 import { gregorianToHijriLong } from '../../../core/calendar';
 import { formatMinutesToHoursAndMinutes } from '../../../core/lateness';
 import db from '../../../services/db';
+import AlertIcon from '../../../components/common/AlertIcon';
 import { exportCollectiveReport, exportIndividualReport } from '../../../services/excel';
 
 export default function ManagerReportsPage() {
@@ -433,21 +434,11 @@ export default function ManagerReportsPage() {
             {/* خيارات التصدير والطباعة (مخفية عند الطباعة الفعلية) */}
             <div className="report-actions-bar no-print">
               <button onClick={handlePrint} className="btn btn-navy print-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                <lord-icon
-                  src="https://cdn.lordicon.com/fkdzyuuo.json"
-                  trigger="hover"
-                  colors="primary:#ffffff"
-                  style={{ width: '20px', height: '20px' }}
-                ></lord-icon>
+                <AlertIcon type="print" size="20px" color="#ffffff" />
                 طباعة التقرير (PDF)
               </button>
               <button onClick={handleExcelExport} className="btn btn-secondary excel-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                <lord-icon
-                  src="https://cdn.lordicon.com/gqdnbnwt.json"
-                  trigger="hover"
-                  colors="primary:#15445A,secondary:#07A869"
-                  style={{ width: '20px', height: '20px' }}
-                ></lord-icon>
+                <AlertIcon type="excel" size="20px" color="#15445A" />
                 تصدير إلى ملف Excel (XLSX)
               </button>
             </div>
@@ -470,12 +461,7 @@ export default function ManagerReportsPage() {
                   {showTotalTeachers && (reportType === 'collective') && (
                     <div className="report-kpi-card kpi-total">
                       <div className="kpi-icon-wrapper">
-                        <lord-icon
-                          src="https://cdn.lordicon.com/dxjqoygy.json"
-                          trigger="hover"
-                          colors="primary:#15445A"
-                          style={{ width: '36px', height: '36px' }}
-                        ></lord-icon>
+                        <AlertIcon type="users" size="36px" color="#15445A" />
                       </div>
                       <div className="kpi-info-wrapper">
                         <span className="kpi-num">{reportStats.totalTeachers}</span>
@@ -487,12 +473,7 @@ export default function ManagerReportsPage() {
                   {showActiveDays && (
                     <div className="report-kpi-card kpi-active">
                       <div className="kpi-icon-wrapper">
-                        <lord-icon
-                          src="https://cdn.lordicon.com/qvyppzqz.json"
-                          trigger="hover"
-                          colors="primary:#3D7EB9"
-                          style={{ width: '36px', height: '36px' }}
-                        ></lord-icon>
+                        <AlertIcon type="calendar" size="36px" color="#3D7EB9" />
                       </div>
                       <div className="kpi-info-wrapper">
                         <span className="kpi-num">{reportStats.activeDays}</span>
@@ -504,12 +485,7 @@ export default function ManagerReportsPage() {
                   {showPresentDays && (
                     <div className="report-kpi-card kpi-present">
                       <div className="kpi-icon-wrapper">
-                        <lord-icon
-                          src="https://cdn.lordicon.com/oqdmwree.json"
-                          trigger="hover"
-                          colors="primary:#07A869"
-                          style={{ width: '36px', height: '36px' }}
-                        ></lord-icon>
+                        <AlertIcon type="success" size="36px" color="#07A869" />
                       </div>
                       <div className="kpi-info-wrapper">
                         <span className="kpi-num">
@@ -529,12 +505,7 @@ export default function ManagerReportsPage() {
                   {showExcusedDays && (reportSubFilter !== 'assembly') && (
                     <div className="report-kpi-card kpi-excused">
                       <div className="kpi-icon-wrapper">
-                        <lord-icon
-                          src="https://cdn.lordicon.com/nocggjqy.json"
-                          trigger="hover"
-                          colors="primary:#C1B48A"
-                          style={{ width: '36px', height: '36px' }}
-                        ></lord-icon>
+                        <AlertIcon type="leave" size="36px" color="#C1B48A" />
                       </div>
                       <div className="kpi-info-wrapper">
                         <span className="kpi-num">
@@ -552,12 +523,7 @@ export default function ManagerReportsPage() {
                   {showAbsentDays && (reportSubFilter !== 'classes') && (
                     <div className="report-kpi-card kpi-absent">
                       <div className="kpi-icon-wrapper">
-                        <lord-icon
-                          src="https://cdn.lordicon.com/nhfyxasy.json"
-                          trigger="hover"
-                          colors="primary:#EF4444"
-                          style={{ width: '36px', height: '36px' }}
-                        ></lord-icon>
+                        <AlertIcon type="error" size="36px" color="#EF4444" />
                       </div>
                       <div className="kpi-info-wrapper">
                         <span className="kpi-num" style={{ color: '#EF4444' }}>
@@ -575,12 +541,7 @@ export default function ManagerReportsPage() {
                   {showLateness && (
                     <div className="report-kpi-card kpi-lateness">
                       <div className="kpi-icon-wrapper">
-                        <lord-icon
-                          src="https://cdn.lordicon.com/qwyfzmzi.json"
-                          trigger="hover"
-                          colors="primary:#DC2626"
-                          style={{ width: '36px', height: '36px' }}
-                        ></lord-icon>
+                        <AlertIcon type="clock" size="36px" color="#DC2626" />
                       </div>
                       <div className="kpi-info-wrapper">
                         <span className="kpi-num" style={{ color: '#DC2626' }}>

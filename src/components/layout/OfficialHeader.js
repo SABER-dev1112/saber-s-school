@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import db from '../../services/db';
 import { getTodayHijriLong } from '../../core/calendar';
+import AlertIcon from '../common/AlertIcon';
 
 export default function OfficialHeader({ title, customHijriDate, reportTypeLabel }) {
   const [settings, setSettings] = useState(null);
@@ -36,12 +37,7 @@ export default function OfficialHeader({ title, customHijriDate, reportTypeLabel
             <img src="/ministry_logo.png" alt="شعار وزارة التعليم" className="ministry-logo" />
             <div className="school-info">
               <span className="city-text" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <lord-icon
-                  src="https://cdn.lordicon.com/iikoxwld.json"
-                  trigger="hover"
-                  colors="primary:#ffffff"
-                  style={{ width: '18px', height: '18px' }}
-                ></lord-icon>
+                <AlertIcon type="location" size="18px" color="#ffffff" />
                 إدارة تعليم {city}
               </span>
               <h1 className="school-title">{schoolName}</h1>
@@ -62,12 +58,7 @@ export default function OfficialHeader({ title, customHijriDate, reportTypeLabel
             <div className="badge-date-container">
               <span className="report-pill-badge">{reportTypeLabel}</span>
               <span className="hijri-date-text-premium">
-                <lord-icon
-                  src="https://cdn.lordicon.com/qvyppzqz.json"
-                  trigger="hover"
-                  colors="primary:#ffffff"
-                  style={{ width: '16px', height: '16px', verticalAlign: 'middle', marginLeft: '5px' }}
-                ></lord-icon>
+                <AlertIcon type="calendar" size="16px" color="#ffffff" />
                 {displayDate}
               </span>
             </div>

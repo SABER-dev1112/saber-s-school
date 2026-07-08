@@ -1,4 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase';
+import { sanitizeAttendanceRecord, sanitizeCorrectionRecord } from '../core/sanitizer';
+import { enqueueAttendance } from '../core/offlineQueue';
 
 // البيانات الأولية لمحاكاة النظام بدون Supabase (Seed Data)
 const INITIAL_TEACHERS = [];
@@ -264,17 +266,32 @@ export const db = {
 
   async saveAttendance(records) {
     // records: Array of { teacher_id, date, status, check_in_time, delay_minutes }
+    const sanitizedRecords = (records || []).map(sanitizeAttendanceRecord);
+
     if (isSupabaseConfigured) {
-      // استخدام upsert لتحديث أو إضافة السجل
-      const { data, error } = await supabase
-        .from('attendance')
-        .upsert(records, { onConflict: 'teacher_id, date' })
-        .select();
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await supabase
+          .from('attendance')
+          .upsert(sanitizedRecords, { onConflict: 'teacher_id,date' })
+          .select();
+        
+        if (error) {
+          if (error.code === 'PGRST116' || error.status === 401 || error.status === 403) {
+            throw error;
+          }
+          console.warn('Supabase saveAttendance failed, enqueuing locally:', error);
+          enqueueAttendance(sanitizedRecords);
+          return { data: sanitizedRecords, fromOfflineQueue: true };
+        }
+        return data;
+      } catch (err) {
+        console.warn('Supabase saveAttendance exception, enqueuing locally:', err);
+        enqueueAttendance(sanitizedRecords);
+        return { data: sanitizedRecords, fromOfflineQueue: true };
+      }
     } else {
       const attendance = getLocalData('attendance', INITIAL_ATTENDANCE);
-      records.forEach(newRec => {
+      sanitizedRecords.forEach(newRec => {
         const index = attendance.findIndex(a => a.teacher_id === newRec.teacher_id && a.date === newRec.date);
         if (index !== -1) {
           attendance[index] = { ...attendance[index], ...newRec };
@@ -283,7 +300,7 @@ export const db = {
         }
       });
       setLocalData('attendance', attendance);
-      return records;
+      return sanitizedRecords;
     }
   },
 
@@ -379,20 +396,26 @@ export const db = {
   },
 
   async submitCorrection(teacherId, teacherName, date, status, checkInTime, delayMinutes, assemblyStatus, assemblyCheckInTime, assemblyDelayMinutes, classDelays, reason) {
-    const correctionData = {
-      id: 'corr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+    const rawCorrection = {
       teacher_id: teacherId,
       teacher_name: teacherName,
       date,
       status,
       check_in_time: checkInTime,
-      delay_minutes: delayMinutes || 0,
-      assembly_status: assemblyStatus || 'present',
-      assembly_check_in_time: assemblyCheckInTime || null,
-      assembly_delay_minutes: assemblyDelayMinutes || 0,
-      class_delays: classDelays || [],
+      delay_minutes: delayMinutes,
+      assembly_status: assemblyStatus,
+      assembly_check_in_time: assemblyCheckInTime,
+      assembly_delay_minutes: assemblyDelayMinutes,
+      class_delays: classDelays,
       reason,
-      request_status: 'pending',
+      request_status: 'pending'
+    };
+
+    const sanitized = sanitizeCorrectionRecord(rawCorrection);
+
+    const correctionData = {
+      id: 'corr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      ...sanitized,
       created_at: new Date().toISOString()
     };
 

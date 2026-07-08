@@ -7,6 +7,7 @@ import OfficialFooter from '../../components/layout/OfficialFooter';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import checkSuspiciousAbsence from '../../core/validation';
 import db from '../../services/db';
+import AlertIcon from '../../components/common/AlertIcon';
 
 export default function ManagerDashboard() {
   const router = useRouter();
@@ -229,12 +230,7 @@ export default function ManagerDashboard() {
         {suspiciousAlert.suspicious && (
           <div className="suspicious-alert-box no-print">
             <div className="alert-content">
-              <lord-icon
-                src="https://cdn.lordicon.com/usxfxwpp.json"
-                trigger="hover"
-                colors="primary:#92400E"
-                style={{ width: '32px', height: '32px' }}
-              ></lord-icon>
+              <AlertIcon type="warning" size="32px" color="#92400E" />
               <div className="alert-text-wrapper">
                 <h3>تنبيه: تم رصد نمط غياب مريب اليوم!</h3>
                 <p>{suspiciousAlert.reason}</p>

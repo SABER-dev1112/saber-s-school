@@ -8,6 +8,8 @@ import LoadingOverlay from '../../components/common/LoadingOverlay';
 import HijriDatePicker from '../../components/common/HijriDatePicker';
 import { calculateLateness, formatMinutesToHoursAndMinutes } from '../../core/lateness';
 import db from '../../services/db';
+import AlertIcon from '../../components/common/AlertIcon';
+import { setupAutoSync } from '../../core/offlineQueue';
 
 export default function EmployeeAttendancePage() {
   const router = useRouter();
@@ -79,6 +81,24 @@ export default function EmployeeAttendancePage() {
       setDate(todayStr);
     }
   }, [router]);
+
+  // إعداد المزامنة التلقائية لطابور الحفظ المحلي
+  useEffect(() => {
+    if (authorized) {
+      setupAutoSync(async (queuedRecords) => {
+        try {
+          const result = await db.saveAttendance(queuedRecords);
+          if (result && !result.fromOfflineQueue) {
+            setMessage({ text: 'تمت مزامنة كافة سجلات الحفظ المعلقة محلياً مع السحابة بنجاح.', type: 'success' });
+            return true;
+          }
+        } catch (err) {
+          console.error('Auto sync error:', err);
+        }
+        return false;
+      });
+    }
+  }, [authorized]);
 
   // تحميل الإعدادات والمعلمين والإجازات وطلبات التعديل
   useEffect(() => {
@@ -387,9 +407,13 @@ export default function EmployeeAttendancePage() {
         };
       });
 
-      await db.saveAttendance(recordsToSave);
+      const res = await db.saveAttendance(recordsToSave);
       setIsSubmitted(true);
-      setMessage({ text: 'تم حفظ وقفل سجل الحضور والغياب لليوم بنجاح.', type: 'success' });
+      if (res && res.fromOfflineQueue) {
+        setMessage({ text: 'تعذر الاتصال بالسحابة. تم حفظ سجل التحضير مؤقتاً على جهازك، وسيتم رفعه تلقائياً فور عودة الإنترنت.', type: 'warning' });
+      } else {
+        setMessage({ text: 'تم حفظ وقفل سجل الحضور والغياب لليوم بنجاح.', type: 'success' });
+      }
     } catch (err) {
       console.error(err);
       setMessage({ text: 'حدث خطأ أثناء حفظ السجلات، يرجى المحاولة لاحقاً.', type: 'danger' });
@@ -523,12 +547,7 @@ export default function EmployeeAttendancePage() {
 
               {isSubmitted && (
                 <div style={{ padding: '12px 18px', backgroundColor: '#FEF3C7', color: '#B45309', borderRadius: '6px', border: '1px solid #FDE68A', fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <lord-icon
-                    src="https://cdn.lordicon.com/usxfxwpp.json"
-                    trigger="hover"
-                    colors="primary:#B45309"
-                    style={{ width: '22px', height: '22px' }}
-                  ></lord-icon>
+                  <AlertIcon type="warning" size="22px" color="#B45309" />
                   تنبيه: تم إرسال وقفل حضور وغياب هذا اليوم مسبقاً. لتعديل أي خطأ، يرجى استخدام قسم "تعديل مستندات".
                 </div>
               )}
@@ -1319,12 +1338,11 @@ export default function EmployeeAttendancePage() {
         <div className="custom-modal-overlay no-print">
           <div className="custom-modal">
             <div className="custom-modal-header">
-              <lord-icon
-                src={modalConfig.type === 'warning' ? "https://cdn.lordicon.com/usxfxwpp.json" : "https://cdn.lordicon.com/oqdmwree.json"}
-                trigger="loop"
-                colors={modalConfig.type === 'warning' ? "primary:#B45309" : "primary:#15445A"}
-                style={{ width: '32px', height: '32px' }}
-              ></lord-icon>
+              <AlertIcon 
+                type={modalConfig.type === 'warning' ? 'warning' : 'success'} 
+                size="32px" 
+                color={modalConfig.type === 'warning' ? '#B45309' : '#15445A'} 
+              />
               <h3 className="custom-modal-title">{modalConfig.title}</h3>
             </div>
             <div className="custom-modal-body">
