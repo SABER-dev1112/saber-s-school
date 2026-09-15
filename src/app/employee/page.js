@@ -9,6 +9,7 @@ import HijriDatePicker from '../../components/common/HijriDatePicker';
 import { calculateLateness, formatMinutesToHoursAndMinutes } from '../../core/lateness';
 import db from '../../services/db';
 import AlertIcon from '../../components/common/AlertIcon';
+import AttendanceStatusSelect from '../../components/common/AttendanceStatusSelect';
 import { setupAutoSync } from '../../core/offlineQueue';
 
 export default function EmployeeAttendancePage() {
@@ -689,15 +690,11 @@ export default function EmployeeAttendancePage() {
                                   {record.locked ? (
                                     <span className="badge-excused">[إجازة معتمدة مسبقاً]</span>
                                   ) : (
-                                    <select
+                                    <AttendanceStatusSelect
                                       value={record.status}
-                                      onChange={(e) => handleStatusChange(teacher.id, e.target.value)}
+                                      onChange={(val) => handleStatusChange(teacher.id, val)}
                                       disabled={isGeneralDisabled}
-                                      className="table-select"
-                                    >
-                                      <option value="present">حاضر</option>
-                                      <option value="absent">غائب</option>
-                                    </select>
+                                    />
                                   )}
                                 </td>
                                 <td>
@@ -919,15 +916,11 @@ export default function EmployeeAttendancePage() {
                                 {record.locked ? (
                                   <span className="badge-excused" style={{ fontSize: '12px' }}>[إجازة معتمدة]</span>
                                 ) : (
-                                  <select
+                                  <AttendanceStatusSelect
                                     value={record.status}
-                                    onChange={(e) => handleStatusChange(teacher.id, e.target.value)}
+                                    onChange={(val) => handleStatusChange(teacher.id, val)}
                                     disabled={isGeneralDisabled}
-                                    className="form-select-mobile"
-                                  >
-                                    <option value="present">حاضر</option>
-                                    <option value="absent">غائب</option>
-                                  </select>
+                                  />
                                 )}
                               </div>
 
