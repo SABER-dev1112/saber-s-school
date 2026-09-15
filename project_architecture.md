@@ -31,7 +31,8 @@
 │   │   │   ├── Select.js
 │   │   │   ├── HijriDatePicker.js # محدد التاريخ الهجري المتخصص
 │   │   │   ├── LoadingOverlay.js  # شاشة التحميل المموهة والنبضية بشعار المدرسة
-│   │   │   └── AlertIcon.js       # الأيقونات البصرية المحلية للواجهات (SVGs) بدلاً من استدعاءات Lordicon
+│   │   │   ├── AlertIcon.js       # الأيقونات البصرية المحلية للواجهات (SVGs) بدلاً من استدعاءات Lordicon
+│   │   │   └── AttendanceStatusSelect.js # مكوّن مخصص فاخر لاختيار حالة المعلم (حاضر / غائب) بألوان تفاعلية وسهم متحرك
 │   │   ├── layout/             # الهيدر والفوتر الرسميين للمدرسة والوزارة
 │   │   │   ├── OfficialHeader.js
 │   │   │   └── OfficialFooter.js

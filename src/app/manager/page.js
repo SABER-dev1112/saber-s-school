@@ -54,38 +54,30 @@ export default function ManagerDashboard() {
       setSettings(settingsData);
 
       // حساب الإحصائيات اليومية لليوم الحالي
-      let present = 0, absent = 0, excused = 0, pending = 0, late = 0;
+      let present = 0, absent = 0, late = 0;
       let assemblyLate = 0, assemblyAbsent = 0;
       let classLate = 0, classAbsent = 0;
       
       teachersData.forEach(t => {
         const record = attendanceToday.find(r => r.teacher_id === t.id);
-        if (record) {
-          if (record.status === 'present') {
-            present++;
-            if (record.delay_minutes > 0) late++;
-            if (record.assembly_status === 'late') assemblyLate++;
-            if (record.assembly_status === 'absent') assemblyAbsent++;
-            
-            const delays = record.class_delays || [];
-            delays.forEach(cd => {
-              if (cd.status === 'late') classLate++;
-              if (cd.status === 'absent') classAbsent++;
-            });
-          } else if (record.status === 'absent') {
-            absent++;
-          } else if (record.status === 'excused' || record.status === 'emergency_approved') {
-            excused++;
-          } else if (record.status === 'emergency_pending') {
-            pending++;
-          }
+        if (record && record.status === 'present') {
+          present++;
+          if (record.delay_minutes > 0) late++;
+          if (record.assembly_status === 'late') assemblyLate++;
+          if (record.assembly_status === 'absent') assemblyAbsent++;
+          
+          const delays = record.class_delays || [];
+          delays.forEach(cd => {
+            if (cd.status === 'late') classLate++;
+            if (cd.status === 'absent') classAbsent++;
+          });
         } else {
-          // لم يحضر بعد يعتبر غائب افتراضياً
+          // لم يحضر أو مسجل كغائب
           absent++;
         }
       });
 
-      setStats({ present, absent, excused, pending, late, assemblyLate, assemblyAbsent, classLate, classAbsent });
+      setStats({ present, absent, late, assemblyLate, assemblyAbsent, classLate, classAbsent });
 
       // تصفية الإجازات الطارئة المعلقة لليوم الحالي
       const pendingLeaves = attendanceToday.filter(r => r.status === 'emergency_pending').map(r => {
@@ -256,12 +248,8 @@ export default function ManagerDashboard() {
             <span className="stat-label">المتأخرين صباحاً اليوم</span>
             <span className="stat-value">{stats.late}</span>
           </div>
-          <div className="stat-card stat-excused">
-            <span className="stat-label">إجازات وأعذار اليوم</span>
-            <span className="stat-value">{stats.excused}</span>
-          </div>
           <div className="stat-card stat-absent">
-            <span className="stat-label">الغائبين بدون عذر</span>
+            <span className="stat-label">المعلمين الغائبين اليوم</span>
             <span className="stat-value">{stats.absent}</span>
           </div>
         </div>
@@ -406,7 +394,7 @@ export default function ManagerDashboard() {
                     <th>التخصص</th>
                     <th>الحالة العامة</th>
                     <th>وقت الحضور العام</th>
-                    <th>تأخير الصباح</th>
+                    <th>حالة التوقيت والتأخير</th>
                     <th>طابور الصباح</th>
                     <th>إجراءات الحصص اليومية</th>
                   </tr>
@@ -427,67 +415,62 @@ export default function ManagerDashboard() {
                   ) : (
                     teachers.map(teacher => {
                       const record = todayAttendance.find(r => r.teacher_id === teacher.id);
-                      let statusText = 'غياب بدون إذن';
-                      let statusClass = 'status-absent';
-                      let checkIn = '-';
-                      let delayText = 'في الموعد';
-                      let assemblyText = 'حضر في الموعد';
-                      let assemblyClass = 'status-present';
-                      let classesText = 'ملتزم بالحصص';
-                      let classesClass = 'status-present';
-
-                      if (record) {
-                        if (record.status === 'present') {
-                          statusText = 'حاضر';
-                          statusClass = 'status-present';
-                          checkIn = record.check_in_time || '-';
-                          delayText = record.delay_minutes > 0 
-                            ? `${record.delay_minutes} دقيقة` 
-                            : 'في الموعد';
-                          
-                          // طابور الصباح
-                          if (record.assembly_status === 'late') {
-                            assemblyText = `متأخر ${record.assembly_delay_minutes} د`;
-                            assemblyClass = 'status-pending';
-                          } else if (record.assembly_status === 'absent') {
-                            assemblyText = 'غائب عن الطابور';
-                            assemblyClass = 'status-absent';
-                          }
-
-                          // الحصص
-                          const delays = record.class_delays || [];
-                          if (delays.length > 0) {
-                            const lateCount = delays.filter(d => d.status === 'late').length;
-                            const absentCount = delays.filter(d => d.status === 'absent').length;
-                            let parts = [];
-                            if (lateCount > 0) parts.push(`تأخر ${lateCount} حصص`);
-                            if (absentCount > 0) parts.push(`غياب ${absentCount} حصص`);
-                            classesText = parts.join(' و ');
-                            classesClass = 'status-pending';
-                          }
-                        } else if (record.status === 'excused' || record.status === 'emergency_approved') {
-                          statusText = 'إجازة معتمدة';
-                          statusClass = 'status-excused';
-                          delayText = '-';
-                          assemblyText = '-';
-                          assemblyClass = '';
-                          classesText = '-';
-                          classesClass = '';
-                        } else if (record.status === 'emergency_pending') {
-                          statusText = 'إجازة طارئة (معلقة)';
-                          statusClass = 'status-pending';
-                          delayText = '-';
-                          assemblyText = '-';
-                          assemblyClass = '';
-                          classesText = '-';
-                          classesClass = '';
+                      const isPresent = record && record.status === 'present';
+                      const statusText = isPresent ? 'حاضر' : 'غائب';
+                      const statusClass = isPresent ? 'status-present' : 'status-absent';
+                      const checkIn = isPresent ? (record.check_in_time || '-') : '-';
+                      
+                      let timingBadge = null;
+                      if (isPresent) {
+                        if (record.delay_minutes > 0) {
+                          timingBadge = (
+                            <span className="status-late-badge">
+                              متأخر ({record.delay_minutes} د)
+                            </span>
+                          );
+                        } else {
+                          timingBadge = (
+                            <span className="status-ontime-badge">
+                              ✓ في الموعد
+                            </span>
+                          );
                         }
                       } else {
-                        delayText = '-';
-                        assemblyText = '-';
-                        assemblyClass = '';
-                        classesText = '-';
-                        classesClass = '';
+                        timingBadge = <span style={{ color: '#94A3B8' }}>-</span>;
+                      }
+
+                      let assemblyText = '-';
+                      let assemblyClass = '';
+                      let classesText = '-';
+                      let classesClass = '';
+
+                      if (isPresent) {
+                        // طابور الصباح
+                        if (record.assembly_status === 'late') {
+                          assemblyText = `متأخر ${record.assembly_delay_minutes} د`;
+                          assemblyClass = 'status-pending';
+                        } else if (record.assembly_status === 'absent') {
+                          assemblyText = 'غائب عن الطابور';
+                          assemblyClass = 'status-absent';
+                        } else {
+                          assemblyText = 'حضر في الموعد';
+                          assemblyClass = 'status-present';
+                        }
+
+                        // الحصص
+                        const delays = record.class_delays || [];
+                        if (delays.length > 0) {
+                          const lateCount = delays.filter(d => d.status === 'late').length;
+                          const absentCount = delays.filter(d => d.status === 'absent').length;
+                          let parts = [];
+                          if (lateCount > 0) parts.push(`تأخر ${lateCount} حصص`);
+                          if (absentCount > 0) parts.push(`غياب ${absentCount} حصص`);
+                          classesText = parts.join(' و ');
+                          classesClass = 'status-pending';
+                        } else {
+                          classesText = 'ملتزم بالحصص';
+                          classesClass = 'status-present';
+                        }
                       }
 
                       return (
@@ -498,18 +481,12 @@ export default function ManagerDashboard() {
                             <span className={`status-badge ${statusClass}`}>{statusText}</span>
                           </td>
                           <td>{checkIn}</td>
+                          <td>{timingBadge}</td>
                           <td>
-                            {record && record.status === 'present' && record.delay_minutes > 0 ? (
-                              <span className="delay-text-highlight">{delayText}</span>
-                            ) : (
-                              <span>{delayText}</span>
-                            )}
+                            {assemblyClass ? <span className={`status-badge ${assemblyClass}`}>{assemblyText}</span> : <span style={{ color: '#94A3B8' }}>-</span>}
                           </td>
                           <td>
-                            {assemblyClass ? <span className={`status-badge ${assemblyClass}`}>{assemblyText}</span> : '-'}
-                          </td>
-                          <td>
-                            {classesClass ? <span className={`status-badge ${classesClass}`}>{classesText}</span> : '-'}
+                            {classesClass ? <span className={`status-badge ${classesClass}`}>{classesText}</span> : <span style={{ color: '#94A3B8' }}>-</span>}
                           </td>
                         </tr>
                       );
@@ -611,7 +588,7 @@ export default function ManagerDashboard() {
         }
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(5, 1fr);
+          grid-template-columns: repeat(4, 1fr);
           gap: 15px;
           margin-bottom: 30px;
         }
@@ -741,6 +718,25 @@ export default function ManagerDashboard() {
         .status-absent { background-color: #FDE8E8; color: #9B1C1C; }
         .status-excused { background-color: #FEF08A; color: #713F12; }
         .status-pending { background-color: #E0F2FE; color: #0369A1; }
+        
+        .status-ontime-badge {
+          background-color: #DEF7EC;
+          color: #03543F;
+          padding: 3px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: bold;
+          display: inline-block;
+        }
+        .status-late-badge {
+          background-color: #FEE2E2;
+          color: #991B1B;
+          padding: 3px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: bold;
+          display: inline-block;
+        }
         
         .delay-text-highlight {
           color: #DC2626;
