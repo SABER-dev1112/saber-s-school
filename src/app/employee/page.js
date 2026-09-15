@@ -696,8 +696,7 @@ export default function EmployeeAttendancePage() {
                                       className="table-select"
                                     >
                                       <option value="present">حاضر</option>
-                                      <option value="absent">غياب بدون إذن</option>
-                                      <option value="emergency_pending">إجازة طارئة (انتظار الاعتماد)</option>
+                                      <option value="absent">غائب</option>
                                     </select>
                                   )}
                                 </td>
@@ -927,8 +926,7 @@ export default function EmployeeAttendancePage() {
                                     className="form-select-mobile"
                                   >
                                     <option value="present">حاضر</option>
-                                    <option value="absent">غياب بدون إذن</option>
-                                    <option value="emergency_pending">إجازة طارئة</option>
+                                    <option value="absent">غائب</option>
                                   </select>
                                 )}
                               </div>
